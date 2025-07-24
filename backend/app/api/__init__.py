@@ -1,5 +1,7 @@
 from fastapi import APIRouter
-from . import sample
+from . import sample, book, soundscape
 
 router = APIRouter()
-router.include_router(sample.router, prefix="/sample", tags=["Sample"])
+router.include_router(sample.router)
+router.include_router(book.router)
+router.include_router(soundscape.router)
