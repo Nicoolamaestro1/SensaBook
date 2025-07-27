@@ -50,3 +50,4 @@ def get_ambient_soundscape(book_id: int):
         "detected_scenes": scenes,
         "ambient_tracks": ambient_tracks or ["default_ambience.mp3"],
     }
+
