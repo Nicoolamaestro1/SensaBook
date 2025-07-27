@@ -6,7 +6,8 @@ class Book(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
-    author = Column(String, nullable=False)
+    author = Column(String, nullable=True)
     summary = Column(Text, nullable=True)
     cover_url = Column(String, nullable=True)
     genre = Column(String, nullable=True)
+    content = Column(Text, nullable=True)
