@@ -1,32 +1,11 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import "./styles/global.css";
-import 'react-native-reanimated';
+import * as React from 'react';
+import { PaperProvider } from 'react-native-paper';
+import LoginScreen from './login';
 
-import { useColorScheme } from '@/hooks/useColorScheme';
-
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
-  if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
-  }
-
+export default function App() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-      {/* Home ruta (app/index.tsx) */}
-      <Stack.Screen name="index" options={{ title: "Home" }} />
-
-      {/* Login ruta (app/login.tsx) */}
-      <Stack.Screen name="login" options={{ title: "Login" }} />
-    </Stack>
-    </ThemeProvider>
+    <PaperProvider>
+      <LoginScreen />
+    </PaperProvider>
   );
 }
