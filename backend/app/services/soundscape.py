@@ -2,7 +2,7 @@ import spacy
 from collections import Counter, defaultdict
 from typing import List, Dict, Tuple
 from sqlalchemy.orm import Session
-from .book import get_book_page
+from .book import get_page
 
 # Scene priorities can be tuned for your needs
 CARPET_PRIORITY = [
@@ -117,12 +117,12 @@ def get_contextual_summary(text: str) -> str:
         return sent.text
     return text[:120] + "..." if len(text) > 120 else text
 
-def get_ambient_soundscape(book_id: int, book_page_id: int, db: Session) -> Dict:
+def get_ambient_soundscape(book_id: int, chapter_number: int, page_number: int, db: Session) -> Dict:
     """
     Returns soundscape data for a given book page, 
     using context-aware prioritization for carpet sounds.
     """
-    book_page = get_book_page(book_id=book_id, book_page_id=book_page_id, db=db)
+    book_page = get_page(book_id=book_id, chapter_number=chapter_number, page_number=page_number, db=db)
     if not book_page:
         return {"error": "Book page not found"}
 
@@ -143,7 +143,8 @@ def get_ambient_soundscape(book_id: int, book_page_id: int, db: Session) -> Dict
     # Add more context to the response for advanced use
     return {
         "book_id": book_id,
-        "book_page_id": book_page_id,
+        "chapter_id": chapter_number,
+        "page_id": page_number,
         "summary": context_summary,
         "detected_scenes": sorted_scenes,
         "scene_keyword_counts": scene_counts,

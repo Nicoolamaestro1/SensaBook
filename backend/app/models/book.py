@@ -12,15 +12,28 @@ class Book(Base):
     cover_url = Column(String, nullable=True)
     genre = Column(String, nullable=True)
 
-    pages = relationship("BookPage", order_by="BookPage.page_number", back_populates="book")
+    chapters = relationship("Chapter", order_by="Chapter.chapter_number", back_populates="book")
 
 
-class BookPage(Base):
-    __tablename__ = "book_pages"
+class Chapter(Base):
+    __tablename__ = "chapter"
 
     id = Column(Integer, primary_key=True)
+    book_id = Column(Integer, ForeignKey("book.id"))
+    chapter_number = Column(Integer, index=True)
+    title = Column(String, nullable=True)
+
+    book = relationship("Book", back_populates="chapters")
+    pages = relationship("Page", order_by="Page.page_number", back_populates="chapter")
+
+
+class Page(Base):
+    __tablename__ = "page"
+
+    id = Column(Integer, primary_key=True)
+    chapter_id = Column(Integer, ForeignKey("chapter.id"))
     book_id = Column(Integer, ForeignKey("book.id"))
     page_number = Column(Integer, index=True)
     content = Column(Text)
 
-    book = relationship("Book", back_populates="pages")
+    chapter = relationship("Chapter", back_populates="pages")

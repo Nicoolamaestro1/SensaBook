@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.services.soundscape import get_ambient_soundscape
 from app.db.session import get_db
+from sqlalchemy import Column, Integer, ForeignKey
 
 router = APIRouter(prefix="/soundscape", tags=["Soundscape"])
 
-@router.get("/book/{book_id}/page/{book_page_id}")
-def get_soundscape(book_id: int, book_page_id: int, db: Session = Depends(get_db)):
+@router.get("/book/{book_id}/chapter{chapter_number}/page/{page_number}")
+def get_soundscape(book_id: int, chapter_number: int, page_number: int, db: Session = Depends(get_db)):
     """
     Endpoint for generating a context-aware soundscape for a specific book page.
     Returns: {
@@ -20,7 +21,9 @@ def get_soundscape(book_id: int, book_page_id: int, db: Session = Depends(get_db
         "triggered_sounds": ...
     }
     """
-    result = get_ambient_soundscape(book_id, book_page_id, db)
+    result = get_ambient_soundscape(book_id, chapter_number, page_number, db)
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
     return result
+
+chapter_id = Column(Integer, ForeignKey("chapter.id"))
