@@ -6,3 +6,7 @@ sqlalchemy
 psycopg2-binary
 spacy
 langcodes
+passlib[bcrypt]
+python-jose[cryptography]
+httpx
+redis   
