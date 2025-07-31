@@ -1,10 +1,20 @@
 import * as React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
 import { Text, TextInput, Button, Card } from 'react-native-paper';
+import { useRouter } from 'expo-router';
 
 export default function LoginScreen() {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const router = useRouter();
+
+  const handleLogin = () => {
+    if (email === 'admin' && password === 'admin') {
+      router.replace('/library-page');
+    } else {
+      Alert.alert('Error', 'Invalid credentials. Try admin : admin');
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -35,7 +45,7 @@ export default function LoginScreen() {
 
           <Button
             mode="contained"
-            onPress={() => console.log("Login pressed")}
+            onPress={handleLogin}
             style={styles.button}
           >
             Login
@@ -58,7 +68,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F6F6F6',
   },
   card: {
     width: 350,

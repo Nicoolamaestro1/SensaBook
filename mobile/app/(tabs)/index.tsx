@@ -1,5 +1,6 @@
 
 import { Text, View } from "react-native";
+import LoginScreen from "../login";
 
 export default function Index() {
   return (
@@ -14,6 +15,9 @@ export default function Index() {
       <Text style={{ color: "white", fontSize: 32, fontWeight: "bold" }}>
         SensaBook
       </Text>
+
+      <LoginScreen />
+
     </View>
   );
 }
