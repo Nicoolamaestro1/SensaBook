@@ -44,7 +44,7 @@ SCENE_SOUND_MAPPINGS = {
         "carpet": "windy_mountains.mp3"
     },
     "fear": {
-        "keywords": ["superstition", "afraid", "creepy", "haunted", "dark"],
+        "keywords": ["superstition", "afraid", "creepy", "haunted", "dark", "disaster", "evil"],
         "carpet": "tense_drones.mp3"
     }
 }
