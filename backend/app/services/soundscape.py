@@ -2,14 +2,16 @@ import spacy
 from collections import Counter, defaultdict
 from typing import List, Dict, Tuple
 from sqlalchemy.orm import Session
+from spacy.matcher import PhraseMatcher
 from .book import get_page
 
-# Scene priorities can be tuned for your needs
+# Define priority for scene-based ambience layering
 CARPET_PRIORITY = [
     "fear", "storm", "castle", "hotel",
     "library", "forest", "mountains", "travel", "eating"
 ]
 
+# Main mapping of scenes to keywords and their carpet tracks
 SCENE_SOUND_MAPPINGS = {
     "eating": {
         "keywords": ["dinner", "supper", "eating", "meal", "restaurant"],
@@ -49,6 +51,7 @@ SCENE_SOUND_MAPPINGS = {
     }
 }
 
+# Specific word-level sound triggers
 WORD_TO_SOUND = {
     "thunder": "thunder_crack.mp3",
     "lightning": "flash_pop.mp3",
@@ -70,7 +73,18 @@ WORD_TO_SOUND = {
     "whisper": "whisper_ghostly.mp3"
 }
 
+# Load spaCy NLP engine
 nlp = spacy.load("en_core_web_sm")
+
+# Prepare matcher and keyword → scene mapping
+phrase_matcher = PhraseMatcher(nlp.vocab, attr="LOWER")
+PHRASE_TO_SCENE = {}
+
+for scene, data in SCENE_SOUND_MAPPINGS.items():
+    for phrase in data["keywords"]:
+        phrase_doc = nlp.make_doc(phrase.lower())
+        phrase_matcher.add(phrase, [phrase_doc])
+        PHRASE_TO_SCENE[phrase] = scene
 
 def advanced_scene_detection(text: str) -> Tuple[List[str], Dict[str, int], Dict[str, List[int]]]:
     """
@@ -83,14 +97,14 @@ def advanced_scene_detection(text: str) -> Tuple[List[str], Dict[str, int], Dict
     scene_counter = Counter()
     scene_positions = defaultdict(list)
 
-    for token in doc:
-        lemma = token.lemma_.lower()
-        for scene, data in SCENE_SOUND_MAPPINGS.items():
-            if lemma in data["keywords"]:
-                scene_counter[scene] += 1
-                scene_positions[scene].append(token.idx)
+    matches = phrase_matcher(doc)
+    for match_id, start, end in matches:
+        phrase = nlp.vocab.strings[match_id]
+        scene = PHRASE_TO_SCENE.get(phrase)
+        if scene:
+            scene_counter[scene] += 1
+            scene_positions[scene].append(doc[start].idx)
 
-    # Sort scenes by frequency (descending), then by priority (ascending)
     sorted_scenes = sorted(
         scene_counter,
         key=lambda s: (-scene_counter[s], CARPET_PRIORITY.index(s) if s in CARPET_PRIORITY else 999)
@@ -98,6 +112,9 @@ def advanced_scene_detection(text: str) -> Tuple[List[str], Dict[str, int], Dict
     return sorted_scenes, dict(scene_counter), dict(scene_positions)
 
 def detect_triggered_sounds(text: str) -> List[Dict]:
+    """
+    Detects individual sound words in the text and maps them to sound effects.
+    """
     doc = nlp(text)
     triggered = []
     for token in doc:
@@ -111,7 +128,10 @@ def detect_triggered_sounds(text: str) -> List[Dict]:
     return triggered
 
 def get_contextual_summary(text: str) -> str:
-    """Returns the first sentence as a simple summary. Replace with real summarizer if needed."""
+    """
+    Returns the first sentence as a simple summary.
+    Can be replaced with a true summarizer later.
+    """
     doc = nlp(text)
     for sent in doc.sents:
         return sent.text
@@ -119,8 +139,8 @@ def get_contextual_summary(text: str) -> str:
 
 def get_ambient_soundscape(book_id: int, chapter_number: int, page_number: int, db: Session) -> Dict:
     """
-    Returns soundscape data for a given book page, 
-    using context-aware prioritization for carpet sounds.
+    Returns a structured soundscape dict for the given book page.
+    Combines ambient carpet tracks and triggered sounds.
     """
     book_page = get_page(book_id=book_id, chapter_number=chapter_number, page_number=page_number, db=db)
     if not book_page:
@@ -131,7 +151,6 @@ def get_ambient_soundscape(book_id: int, chapter_number: int, page_number: int, 
     triggered_sounds = detect_triggered_sounds(text)
     context_summary = get_contextual_summary(text)
 
-    # Select up to 2 carpet tracks, using frequency+priority sorting
     carpet_tracks = [
         SCENE_SOUND_MAPPINGS[s]["carpet"]
         for s in sorted_scenes[:2]
@@ -140,7 +159,6 @@ def get_ambient_soundscape(book_id: int, chapter_number: int, page_number: int, 
     if not carpet_tracks:
         carpet_tracks = ["default_ambience.mp3"]
 
-    # Add more context to the response for advanced use
     return {
         "book_id": book_id,
         "chapter_id": chapter_number,

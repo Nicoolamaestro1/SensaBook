@@ -1,25 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.api import router as api_router  # assuming you have this
 
-from app.api import router as api_router
-from app.db.session import engine, Base
-from app.models.book import Book  # Import your models
+app = FastAPI()
 
-
-app = FastAPI(title="SensaBook API")
-
-# CORS setup (for React Native)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify allowed domains
+    allow_origins=["http://localhost:3000"],  # or ["*"] for dev
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Create tables
-Base.metadata.create_all(bind=engine)
-
 app.include_router(api_router)
- 
-Book.metadata.create_all(bind=engine)
