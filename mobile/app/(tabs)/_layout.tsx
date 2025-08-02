@@ -1,11 +1,10 @@
-import { Stack, Tabs } from "expo-router";
+
+import React from 'react';
+import { Tabs } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export default function RootLayout() {
   return (
-    // <Stack>
-    //   <Stack.Screen name="index" options={{ headerShown: false}}  />
-    // </Stack>
     <Tabs
       screenOptions={{
         headerShown: false,
