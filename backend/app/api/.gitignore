@@ -1,0 +1,14 @@
+# Ignore Python compiled files
+__pycache__/
+*.py[cod]
+
+# VSCode settings (optional)
+.vscode/
+
+# Virtual environments
+venv/
+env/
+
+# OS files
+.DS_Store
+Thumbs.db
