@@ -1,8 +1,7 @@
-import spacy
+import re
 from collections import Counter, defaultdict
 from typing import List, Dict, Tuple
 from sqlalchemy.orm import Session
-from spacy.matcher import PhraseMatcher
 from .book import get_page
 
 # Define priority for scene-based ambience layering
@@ -14,39 +13,39 @@ CARPET_PRIORITY = [
 # Main mapping of scenes to keywords and their carpet tracks
 SCENE_SOUND_MAPPINGS = {
     "eating": {
-        "keywords": ["dinner", "supper", "eating", "meal", "restaurant"],
+        "keywords": ["dinner", "supper", "eating", "meal", "restaurant", "food", "dining", "feast"],
         "carpet": "restaurant_murmur.mp3"
     },
     "hotel": {
-        "keywords": ["hotel", "lobby", "room service"],
+        "keywords": ["hotel", "lobby", "room service", "inn", "accommodation", "reception"],
         "carpet": "hotel_lobby.mp3"
     },
     "library": {
-        "keywords": ["museum", "library", "books", "research"],
+        "keywords": ["museum", "library", "books", "research", "study", "academic", "scholarly"],
         "carpet": "quiet_museum.mp3"
     },
     "travel": {
-        "keywords": ["carriage", "train", "journey", "trip", "traveling"],
+        "keywords": ["carriage", "train", "journey", "trip", "traveling", "voyage", "expedition"],
         "carpet": "horse_carriage.mp3"
     },
     "storm": {
-        "keywords": ["storm", "thunder", "lightning", "rain", "downpour"],
+        "keywords": ["storm", "thunder", "lightning", "rain", "downpour", "tempest", "gale"],
         "carpet": "stormy_night.mp3"
     },
     "forest": {
-        "keywords": ["forest", "trees", "woods"],
+        "keywords": ["forest", "trees", "woods", "grove", "thicket", "wilderness"],
         "carpet": "night_forest.mp3"
     },
     "castle": {
-        "keywords": ["castle", "keep", "tower", "gates"],
+        "keywords": ["castle", "keep", "tower", "gates", "fortress", "palace", "citadel"],
         "carpet": "stone_echoes.mp3"
     },
     "mountains": {
-        "keywords": ["mountains", "cliff", "peak", "valley"],
+        "keywords": ["mountains", "cliff", "peak", "valley", "summit", "ridge", "alpine"],
         "carpet": "windy_mountains.mp3"
     },
     "fear": {
-        "keywords": ["superstition", "afraid", "creepy", "haunted", "dark", "disaster", "evil"],
+        "keywords": ["superstition", "afraid", "creepy", "haunted", "dark", "disaster", "evil", "terrifying"],
         "carpet": "tense_drones.mp3"
     }
 }
@@ -73,19 +72,6 @@ WORD_TO_SOUND = {
     "whisper": "whisper_ghostly.mp3"
 }
 
-# Load spaCy NLP engine
-nlp = spacy.load("en_core_web_sm")
-
-# Prepare matcher and keyword → scene mapping
-phrase_matcher = PhraseMatcher(nlp.vocab, attr="LOWER")
-PHRASE_TO_SCENE = {}
-
-for scene, data in SCENE_SOUND_MAPPINGS.items():
-    for phrase in data["keywords"]:
-        phrase_doc = nlp.make_doc(phrase.lower())
-        phrase_matcher.add(phrase, [phrase_doc])
-        PHRASE_TO_SCENE[phrase] = scene
-
 def advanced_scene_detection(text: str) -> Tuple[List[str], Dict[str, int], Dict[str, List[int]]]:
     """
     Returns:
@@ -93,17 +79,19 @@ def advanced_scene_detection(text: str) -> Tuple[List[str], Dict[str, int], Dict
         - a dict of scene:frequency
         - a dict of scene:[token positions]
     """
-    doc = nlp(text)
+    text = text.lower()
     scene_counter = Counter()
     scene_positions = defaultdict(list)
-
-    matches = phrase_matcher(doc)
-    for match_id, start, end in matches:
-        phrase = nlp.vocab.strings[match_id]
-        scene = PHRASE_TO_SCENE.get(phrase)
-        if scene:
-            scene_counter[scene] += 1
-            scene_positions[scene].append(doc[start].idx)
+    
+    # Simple keyword matching
+    for scene, data in SCENE_SOUND_MAPPINGS.items():
+        for keyword in data["keywords"]:
+            if keyword in text:
+                scene_counter[scene] += 1
+                # Find position (simplified)
+                pos = text.find(keyword)
+                if pos != -1:
+                    scene_positions[scene].append(pos)
 
     sorted_scenes = sorted(
         scene_counter,
@@ -115,16 +103,18 @@ def detect_triggered_sounds(text: str) -> List[Dict]:
     """
     Detects individual sound words in the text and maps them to sound effects.
     """
-    doc = nlp(text)
+    text = text.lower()
     triggered = []
-    for token in doc:
-        lemma = token.lemma_.lower()
-        if lemma in WORD_TO_SOUND:
+    
+    for word, sound in WORD_TO_SOUND.items():
+        if word in text:
+            pos = text.find(word)
             triggered.append({
-                "word": token.text,
-                "sound": WORD_TO_SOUND[lemma],
-                "position": token.idx
+                "word": word,
+                "sound": sound,
+                "position": pos
             })
+    
     return triggered
 
 def get_contextual_summary(text: str) -> str:
@@ -132,9 +122,9 @@ def get_contextual_summary(text: str) -> str:
     Returns the first sentence as a simple summary.
     Can be replaced with a true summarizer later.
     """
-    doc = nlp(text)
-    for sent in doc.sents:
-        return sent.text
+    sentences = text.split('.')
+    if sentences:
+        return sentences[0].strip()
     return text[:120] + "..." if len(text) > 120 else text
 
 def get_ambient_soundscape(book_id: int, chapter_number: int, page_number: int, db: Session) -> Dict:
