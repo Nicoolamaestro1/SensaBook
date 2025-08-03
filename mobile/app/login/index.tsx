@@ -2,17 +2,31 @@ import * as React from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { Text, TextInput, Button, Card } from 'react-native-paper';
 import { useRouter } from 'expo-router';
+import { apiService } from '../../services/api';
 
 export default function LoginScreen() {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const [isLoading, setIsLoading] = React.useState(false);
   const router = useRouter();
 
-  const handleLogin = () => {
-    if (email === 'admin' && password === 'admin') {
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please enter both email and password');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      console.log('Attempting login with:', { email, password });
+      const response = await apiService.login({ email, password });
+      console.log('Login successful:', response);
       router.replace('/library-page');
-    } else {
-      Alert.alert('Error', 'Invalid credentials. Try admin : admin');
+    } catch (error: any) {
+      console.error('Login error:', error);
+      Alert.alert('Error', `Login failed: ${error?.message || 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -47,8 +61,10 @@ export default function LoginScreen() {
             mode="contained"
             onPress={handleLogin}
             style={styles.button}
+            loading={isLoading}
+            disabled={isLoading}
           >
-            Login
+            {isLoading ? 'Logging in...' : 'Login'}
           </Button>
 
           <Button

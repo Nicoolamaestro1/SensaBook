@@ -146,6 +146,7 @@ def get_ambient_soundscape(book_id: int, chapter_number: int, page_number: int, 
         for s in sorted_scenes[:2]
         if s in SCENE_SOUND_MAPPINGS
     ]
+    carpet_tracks = ['rain-sound-188158.mp3']
     if not carpet_tracks:
         carpet_tracks = ["default_ambience.mp3"]
 

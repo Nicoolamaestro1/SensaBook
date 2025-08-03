@@ -181,7 +181,15 @@ class ReadingAnalyticsService:
         sessions = self._get_reading_sessions(user_id, db, days=30)
         
         if not sessions:
-            return {"message": "No reading data available"}
+            # Return default values when no data is available
+            return {
+                "peak_reading_times": [],
+                "preferred_session_length": {"average_minutes": 0, "most_common": "casual"},
+                "reading_speed_trends": {"average_wpm": 0, "trend": "stable"},
+                "genre_preferences": {"top_genres": [], "diversity_score": 0},
+                "emotional_engagement_trends": {"average_engagement": 0, "trend": "stable"},
+                "consistency_score": 0.0
+            }
         
         # Analyze patterns
         patterns = {

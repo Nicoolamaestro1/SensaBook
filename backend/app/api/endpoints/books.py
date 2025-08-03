@@ -70,6 +70,31 @@ def get_book(book_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Book not found")
     return book
 
+# GET specific page
+@router.get("/books/{book_id}/chapters/{chapter_number}/pages/{page_number}", response_model=PageOut)
+def get_page(book_id: int, chapter_number: int, page_number: int, db: Session = Depends(get_db)):
+    page = db.query(Page).join(Chapter).filter(
+        Page.book_id == book_id,
+        Chapter.chapter_number == chapter_number,
+        Page.page_number == page_number
+    ).first()
+    if not page:
+        raise HTTPException(status_code=404, detail="Page not found")
+    return page
+
+# GET chapter with all pages
+@router.get("/books/{book_id}/chapters/{chapter_number}", response_model=ChapterOut)
+def get_chapter(book_id: int, chapter_number: int, db: Session = Depends(get_db)):
+    chapter = db.query(Chapter).options(
+        joinedload(Chapter.pages)
+    ).filter(
+        Chapter.book_id == book_id,
+        Chapter.chapter_number == chapter_number
+    ).first()
+    if not chapter:
+        raise HTTPException(status_code=404, detail="Chapter not found")
+    return chapter
+
 # POST create book
 @router.post("/book")
 def create_book(book: BookCreate, db: Session = Depends(get_db)):

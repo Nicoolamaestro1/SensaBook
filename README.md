@@ -25,7 +25,33 @@ SensaBook is an immersive book reading platform that enhances your reading exper
 
 ## Getting Started
 
-### Backend (Python/FastAPI)
+### 🐳 Quick Start with Docker (Recommended)
+
+The easiest way to get started is using Docker:
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd SensaBook
+
+# Start all services
+docker-compose up --build
+```
+
+This will start:
+- **PostgreSQL Database** on port 5432
+- **Backend API** on port 8000  
+- **Frontend (Mobile App)** on port 8081
+
+Access the application:
+- **Frontend:** http://localhost:8081
+- **API Docs:** http://localhost:8000/docs
+
+For detailed Docker setup instructions, see [`DOCKER_SETUP.md`](DOCKER_SETUP.md).
+
+### Manual Setup
+
+#### Backend (Python/FastAPI)
 1. **Install dependencies:**
     ```sh
     cd backend
@@ -38,7 +64,7 @@ SensaBook is an immersive book reading platform that enhances your reading exper
     uvicorn app.main:app --reload
     ```
 
-### Mobile (React Native)
+#### Mobile (React Native)
 1. **Install dependencies:**
     ```sh
     cd mobile
@@ -46,7 +72,7 @@ SensaBook is an immersive book reading platform that enhances your reading exper
     ```
 2. **Start the app:**
     ```sh
-    npx react-native run-android # or run-ios
+    npx expo start --web
     ```
 
 ---
