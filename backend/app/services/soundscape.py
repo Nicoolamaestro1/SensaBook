@@ -52,7 +52,7 @@ SCENE_SOUND_MAPPINGS = {
 
 # Specific word-level sound triggers
 WORD_TO_SOUND = {
-    "thunder": "thunder_crack.mp3",
+    "thunder": "thunder-city-377703.mp3",
     "lightning": "flash_pop.mp3",
     "door": "door_creak.mp3",
     "bird": "bird_chirp.mp3",
@@ -141,14 +141,19 @@ def get_ambient_soundscape(book_id: int, chapter_number: int, page_number: int, 
     triggered_sounds = detect_triggered_sounds(text)
     context_summary = get_contextual_summary(text)
 
+    # Get carpet tracks based on detected scenes
     carpet_tracks = [
         SCENE_SOUND_MAPPINGS[s]["carpet"]
         for s in sorted_scenes[:2]
         if s in SCENE_SOUND_MAPPINGS
     ]
-    carpet_tracks = ['rain-sound-188158.mp3']
+    
+    # If no scenes detected, use default tracks
     if not carpet_tracks:
-        carpet_tracks = ["default_ambience.mp3"]
+        # Cycle through available sounds based on page number
+        available_sounds = [
+            "windy_mountains.mp3",
+        ]
 
     return {
         "book_id": book_id,

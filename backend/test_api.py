@@ -178,6 +178,84 @@ def test_reading_patterns(token: str):
     else:
         print(f"❌ Pattern analysis failed: {response.text}")
 
+def test_create_sample_book():
+    """Create a sample book with trigger words for testing position-based sounds"""
+    print("📚 Creating sample book with trigger words...")
+    
+    # Create book
+    book_data = {
+        "title": "The Mysterious Mountain",
+        "author": "Test Author",
+        "summary": "A thrilling adventure with atmospheric sounds",
+        "chapters": [
+            {
+                "chapter_number": 1,
+                "title": "The Storm Approaches",
+                "pages": [
+                    {
+                        "page_number": 1,
+                        "content": "The wind howled through the ancient trees as dark clouds gathered overhead. Sarah could hear the distant rumble of thunder echoing across the valley. She quickened her pace, her footsteps crunching on the gravel path. The storm was approaching fast, and she needed to reach the old cabin before the rain began to fall."
+                    },
+                    {
+                        "page_number": 2,
+                        "content": "As she climbed higher into the mountains, the wind grew stronger, whipping through her hair and making the trees sway violently. Another crack of thunder split the sky, followed by the sound of footsteps approaching from behind. Sarah's heart raced as she turned to see who was following her through the storm."
+                    },
+                    {
+                        "page_number": 3,
+                        "content": "The rain finally began to fall, heavy drops pounding against the rocky terrain. The wind carried the sound of distant thunder, creating an eerie atmosphere. Sarah could hear more footsteps now, but they seemed to be coming from multiple directions. The storm had transformed the peaceful mountain into a place of mystery and danger."
+                    }
+                ]
+            },
+            {
+                "chapter_number": 2,
+                "title": "The Cabin",
+                "pages": [
+                    {
+                        "page_number": 1,
+                        "content": "The old cabin stood silent against the raging storm. Wind battered its weathered walls, and rain poured from the roof in steady streams. Sarah could hear the thunder growing louder as she approached the door. Inside, she hoped to find shelter from the storm and answers to the mysterious footsteps."
+                    },
+                    {
+                        "page_number": 2,
+                        "content": "As she stepped inside, the wind howled through the broken windows, carrying with it the sound of rain and distant thunder. Her footsteps echoed on the wooden floor, mixing with the storm's symphony. The cabin seemed to breathe with the rhythm of the wind, creating an atmosphere of both comfort and unease."
+                    },
+                    {
+                        "page_number": 3,
+                        "content": "The storm outside reached its peak, with thunder shaking the very foundations of the cabin. Rain pounded against the roof like a thousand tiny footsteps, while the wind continued its relentless assault. Sarah sat by the fire, listening to the storm's powerful display of nature's fury."
+                    }
+                ]
+            },
+            {
+                "chapter_number": 3,
+                "title": "The Revelation",
+                "pages": [
+                    {
+                        "page_number": 1,
+                        "content": "As the storm began to subside, Sarah heard footsteps approaching the cabin door. The wind had died down, but the rain still fell gently. Thunder rumbled in the distance, a reminder of the storm's power. She held her breath, waiting to see who would emerge from the storm."
+                    },
+                    {
+                        "page_number": 2,
+                        "content": "The door creaked open, and the wind rushed in one final time. Footsteps echoed through the cabin as a figure emerged from the storm. The rain had soaked their clothes, and the wind had tousled their hair. Sarah recognized the face immediately - it was her long-lost brother, returning from his mountain expedition."
+                    },
+                    {
+                        "page_number": 3,
+                        "content": "The storm had brought them together again, its wind and rain and thunder serving as the backdrop to their reunion. The footsteps that had seemed so mysterious were now familiar and welcome. The mountain had revealed its secrets through the power of the storm, and Sarah knew she would never forget this night."
+                    }
+                ]
+            }
+        ]
+    }
+    
+    response = requests.post("http://localhost:8000/api/book", json=book_data)
+    if response.status_code == 200:
+        book_id = response.json()["book_id"]
+        print(f"✅ Sample book created with ID: {book_id}")
+        print(f"🌐 Test the position-based sounds at: http://localhost:8081/book/{book_id}")
+        print("🎯 Trigger words in the book: thunder, rain, wind, footsteps, storm")
+        return book_id
+    else:
+        print(f"❌ Failed to create sample book: {response.status_code}")
+        return None
+
 def main():
     print("🚀 SensaBook Revolutionary API Test Suite")
     print("=" * 50)
@@ -194,6 +272,7 @@ def main():
     test_soundscape_generation(token)
     test_reading_analytics(token)
     test_reading_patterns(token)
+    test_create_sample_book()
     
     print("\n🎉 All revolutionary tests completed!")
     print("SensaBook is ready to change the world of reading! 📚✨")
