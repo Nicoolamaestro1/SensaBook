@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from app.db.session import Base
 
@@ -11,6 +11,10 @@ class Book(Base):
     summary = Column(Text, nullable=True)
     cover_url = Column(String, nullable=True)
     genre = Column(String, nullable=True)
+    
+    # Sound mappings stored directly with the book
+    scene_mappings = Column(JSON, nullable=True)  # Scene-based sound mappings
+    word_mappings = Column(JSON, nullable=True)   # Word-trigger sound mappings
 
     chapters = relationship("Chapter", order_by="Chapter.chapter_number", back_populates="book")
 

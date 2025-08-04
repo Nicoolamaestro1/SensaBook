@@ -131,6 +131,47 @@ def create_book(book: BookCreate, db: Session = Depends(get_db)):
 
     return {"book_id": db_book.id}
 
+@router.post("/books/with-sound-mappings")
+def create_book_with_sound_mappings(book_data: dict, db: Session = Depends(get_db)):
+    """
+    Create a book with content and automatically generate sound mappings.
+    
+    Expected format:
+    {
+        "title": "Book Title",
+        "author": "Author Name", 
+        "genre": "horror|fantasy|adventure|etc",
+        "chapters": [
+            {
+                "title": "Chapter 1",
+                "pages": ["Page 1 content...", "Page 2 content..."]
+            }
+        ]
+    }
+    """
+    from app.services.book_analyzer import BookAnalyzer
+    
+    analyzer = BookAnalyzer()
+    
+    # Create the book with automatic sound mapping analysis
+    book = analyzer.create_book_with_mappings(
+        title=book_data["title"],
+        author=book_data["author"],
+        genre=book_data["genre"],
+        chapters_data=book_data["chapters"],
+        db=db
+    )
+    
+    return {
+        "book_id": book.id,
+        "title": book.title,
+        "author": book.author,
+        "genre": book.genre,
+        "scene_mappings": book.scene_mappings,
+        "word_mappings": book.word_mappings,
+        "message": "Book created with automatic sound mappings"
+    }
+
 @router.delete("/books/{book_id}", status_code=204)
 def delete_book(book_id: int, db: Session = Depends(get_db)):
     book = db.query(Book).options(joinedload(Book.chapters).joinedload(Chapter.pages)).filter(Book.id == book_id).first()

@@ -134,31 +134,27 @@ def get_contextual_summary(text: str) -> str:
 
 def get_ambient_soundscape(book_id: int, chapter_number: int, page_number: int, db: Session) -> Dict:
     """
-    Returns a structured soundscape dict for the given book page.
-    Combines ambient carpet tracks and triggered sounds.
+    Returns a structured soundscape dict for a specific book page.
+    Uses the book's stored mappings instead of hardcoded ones.
     """
+    from app.models.book import Book
+    from app.services.book_analyzer import get_soundscape_for_page
+    
+    # Get the book and page
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if not book:
+        return {"error": "Book not found"}
+    
     book_page = get_page(book_id=book_id, chapter_number=chapter_number, page_number=page_number, db=db)
     if not book_page:
         return {"error": "Book page not found"}
 
-    text = book_page.content
-    sorted_scenes, scene_counts, scene_positions = advanced_scene_detection(text)
-    triggered_sounds = detect_triggered_sounds(text)
-    context_summary = get_contextual_summary(text)
-
-    # Get carpet tracks based on detected scenes
-    carpet_tracks = [
-        SCENE_SOUND_MAPPINGS[s]["carpet"]
-        for s in sorted_scenes[:2]
-        if s in SCENE_SOUND_MAPPINGS
-    ]
+    # Use the book's stored mappings to get soundscape
+    soundscape = get_soundscape_for_page(book, book_page.content)
     
-    # If no scenes detected, use default tracks
-    if not carpet_tracks:
-        # Cycle through available sounds based on page number
-        available_sounds = [
-            "windy_mountains.mp3",
-        ]
+    # Get scene detection for display purposes
+    sorted_scenes, scene_counts, scene_positions = advanced_scene_detection(book_page.content)
+    context_summary = get_contextual_summary(book_page.content)
 
     return {
         "book_id": book_id,
@@ -168,6 +164,6 @@ def get_ambient_soundscape(book_id: int, chapter_number: int, page_number: int, 
         "detected_scenes": sorted_scenes,
         "scene_keyword_counts": scene_counts,
         "scene_keyword_positions": scene_positions,
-        "carpet_tracks": carpet_tracks,
-        "triggered_sounds": triggered_sounds
+        "carpet_tracks": soundscape["carpet_tracks"],
+        "triggered_sounds": soundscape["triggered_sounds"]
     }
