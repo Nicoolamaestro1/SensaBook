@@ -1,5 +1,6 @@
 from app.api.endpoints import books
 from app.api.endpoints import analytics
+from app.api.endpoints import sound_mappings
 from app.api import auth
 from fastapi import APIRouter
 from . import sample, soundscape
@@ -14,6 +15,9 @@ router.include_router(auth.router, prefix="/auth", tags=["authentication"])
 
 # Revolutionary analytics and emotion analysis endpoints
 router.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
+
+# Sound mapping endpoints (database-driven)
+router.include_router(sound_mappings.router, prefix="/api", tags=["sound-mappings"])
 
 # Legacy endpoints
 router.include_router(sample.router)
