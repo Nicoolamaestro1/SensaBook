@@ -130,3 +130,16 @@ def create_book(book: BookCreate, db: Session = Depends(get_db)):
         db.commit()
 
     return {"book_id": db_book.id}
+
+@router.delete("/books/{book_id}", status_code=204)
+def delete_book(book_id: int, db: Session = Depends(get_db)):
+    book = db.query(Book).options(joinedload(Book.chapters).joinedload(Chapter.pages)).filter(Book.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    for chapter in book.chapters:
+        for page in chapter.pages:
+            db.delete(page)
+        db.delete(chapter)
+    db.delete(book)
+    db.commit()
+    return None

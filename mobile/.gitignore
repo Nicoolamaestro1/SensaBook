@@ -36,4 +36,7 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# Ignore .rys files
+*.pyc
+
 app-example
