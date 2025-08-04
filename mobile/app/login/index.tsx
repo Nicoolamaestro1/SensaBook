@@ -26,7 +26,7 @@ export default function LoginScreen() {
     try {
       const response = await apiService.login({ email, password });
       console.log("Login successful:", response);
-      router.replace("/library-page");
+      router.replace("/(tabs)/library-page");
     } catch (error: any) {
       Alert.alert("Error", `Login failed: ${error?.message || "Unknown error"}`);
     } finally {

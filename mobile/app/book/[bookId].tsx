@@ -1,12 +1,12 @@
 import React from "react";
 import { useLocalSearchParams } from "expo-router";
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Alert } from "react-native";
-import { Card, Button, ProgressBar } from "react-native-paper";
+import { Card, ProgressBar } from "react-native-paper";
 import { Audio } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
 
 // -------------- SOUND MAP (local assets) --------------
-import windyMountains from '../sounds/windy_mountains.mp3';
+import windyMountains from '../sounds/windy_mountains.mp3'; 
 import defaultAmbience from '../sounds/default_ambience.mp3';
 import tenseDrones from '../sounds/tense_drones.mp3';
 import footstepsApproaching from '../sounds/footsteps-approaching-316715.mp3';
@@ -65,7 +65,7 @@ export default function BookDetailScreen() {
     
     words.forEach((word, index) => {
       const lowerWord = word.toLowerCase().replace(/[^\w]/g, '');
-      if (TRIGGER_WORDS[lowerWord]) {
+      if (TRIGGER_WORDS[lowerWord as keyof typeof TRIGGER_WORDS]) {
         foundTriggers.push({
           word: lowerWord,
           position: index,
@@ -115,7 +115,7 @@ export default function BookDetailScreen() {
   // Play trigger sound
   const playTriggerSound = async (word: string) => {
     try {
-      const soundAsset = TRIGGER_WORDS[word];
+      const soundAsset = TRIGGER_WORDS[word as keyof typeof TRIGGER_WORDS];
       if (soundAsset) {
         // Add word to active set for visual highlighting
         setActiveTriggerWords(prev => new Set([...prev, word]));
@@ -174,8 +174,8 @@ export default function BookDetailScreen() {
   const totalPages = currentChapter?.pages?.length || 0;
 
   // Calculate reading progress
-  const totalPagesInBook = book?.chapters?.reduce((total, chapter) => total + chapter.pages.length, 0) || 0;
-  const currentPageInBook = book?.chapters?.slice(0, currentChapterIndex).reduce((total, chapter) => total + chapter.pages.length, 0) + currentPageIndex + 1 || 0;
+  const totalPagesInBook = book?.chapters?.reduce((total: number, chapter: any) => total + chapter.pages.length, 0) || 0;
+  const currentPageInBook = book?.chapters?.slice(0, currentChapterIndex).reduce((total: number, chapter: any) => total + chapter.pages.length, 0) + currentPageIndex + 1 || 0;
   const readingProgress = totalPagesInBook > 0 ? currentPageInBook / totalPagesInBook : 0;
 
   // Navigation functions
@@ -220,7 +220,7 @@ export default function BookDetailScreen() {
       
       if (soundscapeData.carpet_tracks && soundscapeData.carpet_tracks.length > 0) {
         const soundFile = soundscapeData.carpet_tracks[0];
-        const soundAsset = SOUND_MAP[soundFile];
+        const soundAsset = SOUND_MAP[soundFile as keyof typeof SOUND_MAP];
         
         if (soundAsset) {
           const { sound: newSound } = await Audio.Sound.createAsync(soundAsset, {
@@ -345,9 +345,9 @@ export default function BookDetailScreen() {
             <Text style={styles.pageNumber}>
               Page {currentPage.page_number} of {totalPages}
             </Text>
-            <View style={styles.pageText}>
+            <Text style={styles.pageText}>
               {renderTextWithHighlights(currentPage.content)}
-            </View>
+            </Text>
           </Card.Content>
         </Card>
       </View>
