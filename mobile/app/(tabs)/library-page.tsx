@@ -18,7 +18,6 @@ export default function LibraryScreen() {
       .catch(() => setLoading(false));
   }, []);
 
-
   return (
     <View style={styles.container}>
       <Text style={styles.heading}>📚 Welcome to the Library!</Text>
@@ -34,25 +33,25 @@ export default function LibraryScreen() {
           key={3} 
           renderItem={({ item }) => (
             <View style={[styles.cardWrapper, { flex: 1 / 3 }]}>
-            <TouchableOpacity
-              style={styles.card}
-              onPress={() => router.push(`/book/${item.id}`)}
-              activeOpacity={0.85}
-            >
-              {item.cover_url ? (
-                <Image
-                  source={{ uri: item.cover_url }}
-                  style={styles.cardImage}
-                  resizeMode="cover"
-                />
-              ) : null}
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              <Text style={styles.cardSubtitle}>{item.author}</Text>
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity
+                style={styles.card}
+                onPress={() => router.push(`/book/${item.id}`)}
+                activeOpacity={0.85}
+              >
+                {item.cover_url ? (
+                  <Image
+                    source={{ uri: item.cover_url }}
+                    style={styles.cardImage}
+                    resizeMode="cover"
+                  />
+                ) : null}
+                <Text style={styles.cardTitle}>{item.title}</Text>
+                <Text style={styles.cardSubtitle}>{item.author}</Text>
+              </TouchableOpacity>
+            </View>
           )}
           ListEmptyComponent={
-            <Text style={{ textAlign: 'center', marginTop: 16 }}>
+            <Text style={{ textAlign: 'center', color: "#fff", marginTop: 16 }}>
               No books found.
             </Text>
           }
@@ -73,7 +72,9 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "bold",
     marginBottom: 24,
-    textAlign: "center"
+    marginTop: 24,
+    textAlign: "center",
+    color: "#fff"
   },
   row: {
     paddingHorizontal: 8,
