@@ -39,7 +39,6 @@ export default function LibraryScreen() {
               onPress={() => router.push(`/book/${item.id}`)}
               activeOpacity={0.85}
             >
-              {/* Cover slika */}
               {item.cover_url ? (
                 <Image
                   source={{ uri: item.cover_url }}
@@ -47,8 +46,6 @@ export default function LibraryScreen() {
                   resizeMode="cover"
                 />
               ) : null}
-
-              {/* Tekstualni deo */}
               <Text style={styles.cardTitle}>{item.title}</Text>
               <Text style={styles.cardSubtitle}>{item.author}</Text>
             </TouchableOpacity>

@@ -3,19 +3,19 @@ import { View, Animated } from "react-native";
 import LoginScreen from "../login";
 
 export default function Index() {
-  const logoOpacity = useRef(new Animated.Value(1)).current;   // animacija loga
-  const loginOpacity = useRef(new Animated.Value(0)).current;  // animacija login-a
+  const logoOpacity = useRef(new Animated.Value(1)).current;   
+  const loginOpacity = useRef(new Animated.Value(0)).current; 
   const [showLogin, setShowLogin] = useState(false);
 
   useEffect(() => {
-    // posle 2 sekunde animiraj logo da nestane
+    // fake loading for 2 seconds
     const timer = setTimeout(() => {
       Animated.timing(logoOpacity, {
         toValue: 0,
         duration: 500,
         useNativeDriver: true,
       }).start(() => {
-        // kad logo nestane → prikaži login i animiraj ga
+        // show login after logo's gone
         setShowLogin(true);
         Animated.timing(loginOpacity, {
           toValue: 1,
@@ -36,10 +36,10 @@ export default function Index() {
         alignItems: "center",
       }}
     >
-      {/* Logo animacija */}
+      {/* Logo animation */}
       {!showLogin && (
         <Animated.Image
-          source={require("../../assets/images/logo.png")} // 👈 pazi na putanju
+          source={require("../../assets/images/logo.png")} 
           style={{
             width: 120,
             height: 120,
@@ -50,7 +50,7 @@ export default function Index() {
         />
       )}
 
-      {/* Login animacija */}
+      {/* Login animation */}
       {showLogin && (
         <Animated.View style={{ flex: 1, width: "100%", opacity: loginOpacity }}>
           <LoginScreen />

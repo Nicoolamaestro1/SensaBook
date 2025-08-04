@@ -82,13 +82,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 24,
-    backgroundColor: "transparent", // 👈 nema backgrounda
+    backgroundColor: "transparent", 
   },
   title: {
     fontSize: 28,
     fontWeight: "700",
     marginBottom: 32,
-    color: "#fff", // belo na tamnoj pozadini (ili pozadinskoj slici)
+    color: "#fff", 
   },
   input: {
     width: "100%",
