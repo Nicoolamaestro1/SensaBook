@@ -136,8 +136,6 @@ def delete_book(book_id: int, db: Session = Depends(get_db)):
     book = db.query(Book).options(joinedload(Book.chapters).joinedload(Chapter.pages)).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
-    
-    # Prvo obriši sve stranice i poglavlja
     for chapter in book.chapters:
         for page in chapter.pages:
             db.delete(page)
