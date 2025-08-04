@@ -6,7 +6,7 @@ from .book import get_page
 
 # Define priority for scene-based ambience layering
 CARPET_PRIORITY = [
-    "fear", "storm", "castle", "hotel",
+    "fear", "storm",  "indoors", "castle", "hotel",
     "library", "forest", "mountains", "travel", "eating"
 ]
 
@@ -47,6 +47,11 @@ SCENE_SOUND_MAPPINGS = {
     "fear": {
         "keywords": ["superstition", "afraid", "creepy", "haunted", "dark", "disaster", "evil", "terrifying"],
         "carpet": "tense_drones.mp3"
+    },
+    "indoors": {
+        "keywords": ["cabin", "indoors", "inside", "house", "room", "building", "apartment", "home", "wall", "walls",
+        "roof"],
+        "carpet": "cabin.mp3"
     }
 }
 

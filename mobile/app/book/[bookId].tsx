@@ -1,6 +1,6 @@
 import React from "react";
-import { useLocalSearchParams } from "expo-router";
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Alert } from "react-native";
+import { useLocalSearchParams, useFocusEffect } from "expo-router";
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Alert, AppState } from "react-native";
 import { Card, Button, ProgressBar } from "react-native-paper";
 import { Audio } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,8 +14,10 @@ import atmosphereSound from '../sounds/atmosphere-sound-effect-239969.mp3';
 import thunderCity from '../sounds/thunder-city-377703.mp3';
 import stormyNight from '../sounds/stormy_night.mp3';
 import storm from '../sounds/storm.mp3';
+import cabinRain from '../sounds/cabin_rain.mp3';
+import cabin from '../sounds/cabin.mp3';
 
-const SOUND_MAP = {
+const SOUND_MAP: Record<string, any> = {
   "windy_mountains.mp3": windyMountains,
   "default_ambience.mp3": defaultAmbience,
   "tense_drones.mp3": tenseDrones,
@@ -24,6 +26,22 @@ const SOUND_MAP = {
   "thunder-city-377703.mp3": thunderCity,
   "stormy_night.mp3": stormyNight,
   "storm.mp3": storm,
+  "cabin_rain.mp3": cabinRain, // Indoor cabin sound with rain
+  "cabin.mp3": cabin, // Indoor cabin sound without rain
+  "restaurant_murmur.mp3": atmosphereSound, // Restaurant ambience
+  "hotel_lobby.mp3": atmosphereSound, // Hotel lobby ambience
+  "quiet_museum.mp3": defaultAmbience, // Library/museum ambience
+  "horse_carriage.mp3": footstepsApproaching, // Travel sounds
+  "stone_echoes.mp3": tenseDrones, // Castle/stone ambience
+  "night_forest.mp3": windyMountains, // Forest ambience
+  // Additional indoor sounds that might be returned by backend
+  "indoors.mp3": cabinRain, // Generic indoor sound - using cabin rain
+  "inside.mp3": cabinRain, // Inside building sound - using cabin rain
+  "house.mp3": cabinRain, // House ambience - using cabin rain
+  "room.mp3": cabinRain, // Room ambience - using cabin rain
+  "building.mp3": cabinRain, // Building ambience - using cabin rain
+  "apartment.mp3": cabinRain, // Apartment ambience - using cabin rain
+  "home.mp3": cabinRain, // Home ambience - using cabin rain
 };
 
 export default function BookDetailScreen() {
@@ -33,19 +51,60 @@ export default function BookDetailScreen() {
   const [currentChapterIndex, setCurrentChapterIndex] = React.useState(0);
   const [currentPageIndex, setCurrentPageIndex] = React.useState(0);
   const [sound, setSound] = React.useState<Audio.Sound | null>(null);
+  const [previousSound, setPreviousSound] = React.useState<Audio.Sound | null>(null);
+  const [allActiveSounds, setAllActiveSounds] = React.useState<Set<Audio.Sound>>(new Set());
   const [triggerWords, setTriggerWords] = React.useState<Array<{word: string, position: number, timing: number}>>([]);
   const [readingStartTime, setReadingStartTime] = React.useState<number>(0);
   const [isReading, setIsReading] = React.useState(false);
   const [activeTriggerWords, setActiveTriggerWords] = React.useState<Set<string>>(new Set());
   const [playedWords, setPlayedWords] = React.useState<Set<string>>(new Set()); // Track played words to prevent duplicates
+  const [soundscapeData, setSoundscapeData] = React.useState<any>(null); // Store soundscape data for display
+  const [currentCarpetSound, setCurrentCarpetSound] = React.useState<string | null>(null); // Track current carpet sound
 
   // Trigger words and their corresponding sounds
-  const TRIGGER_WORDS = {
+  const TRIGGER_WORDS: Record<string, any> = {
     'thunder': thunderCity, // Using thunder city sound for thunder
     'footsteps': footstepsApproaching,
-    'rain': atmosphereSound, // Using atmosphere sound for rain since rain-sound-188158.mp3 doesn't exist
     'wind': windyMountains,
-    'storm': storm, // Using storm.mp3 for storm
+    'storm': storm,
+  };
+
+  // Fade duration in milliseconds
+  const FADE_DURATION = 1000; // 1 second fade
+
+  // Fade out and cleanup previous sound
+  const fadeOutAndCleanup = async (soundToFade: Audio.Sound | null) => {
+    if (!soundToFade) return;
+    
+    try {
+      console.log("Starting fade out and cleanup...");
+      // Immediately stop the sound first
+      await soundToFade.stopAsync();
+      await soundToFade.unloadAsync();
+      console.log("Sound stopped and unloaded successfully");
+    } catch (error) {
+      console.log("Error stopping sound:", error);
+      // Force unload even if stop fails
+      try {
+        await soundToFade.unloadAsync();
+        console.log("Forced unload successful");
+      } catch (unloadError) {
+        console.log("Error unloading sound:", unloadError);
+      }
+    }
+  };
+
+  // Fade in new sound
+  const fadeInSound = async (newSound: Audio.Sound) => {
+    try {
+      console.log("Starting fade in...");
+      // Set volume and play immediately
+      await newSound.setVolumeAsync(0.5);
+      await newSound.playAsync();
+      console.log("Sound started successfully");
+    } catch (error) {
+      console.log("Error starting sound:", error);
+    }
   };
 
   // Calculate reading timing based on word count and estimated reading speed
@@ -90,6 +149,34 @@ export default function BookDetailScreen() {
     setPlayedWords(new Set()); // Clear played words when stopping
   };
 
+  // Force stop all sounds immediately
+  const forceStopAllSounds = () => {
+    console.log("Force stopping all sounds...");
+    
+    // Stop carpet sound
+    if (sound) {
+      sound.stopAsync().catch(() => {});
+      sound.unloadAsync().catch(() => {});
+      setSound(null);
+    }
+    
+    // Stop all trigger sounds
+    allActiveSounds.forEach(sound => {
+      sound.stopAsync().catch(() => {});
+      sound.unloadAsync().catch(() => {});
+    });
+    
+    // Clear all sound states
+    setPreviousSound(null);
+    setAllActiveSounds(new Set());
+    setCurrentCarpetSound(null); // Reset current carpet sound
+    stopReadingTimer();
+    setActiveTriggerWords(new Set());
+    setPlayedWords(new Set());
+    
+    console.log("All sounds stopped and cleared");
+  };
+
   // Check for trigger words and play sounds
   React.useEffect(() => {
     if (!isReading || triggerWords.length === 0) return;
@@ -126,19 +213,20 @@ export default function BookDetailScreen() {
           volume: 0.8,
         });
         
-        // Remove word from active set after sound finishes
-        setTimeout(() => {
-          setActiveTriggerWords(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(word);
-            return newSet;
-          });
-        }, 3000); // Match the cleanup timeout
-        
-        // Clean up after sound plays
-        setTimeout(() => {
-          newSound.unloadAsync();
-        }, 3000); // Clean up after 3 seconds
+        // Listen for when the sound finishes playing
+        newSound.setOnPlaybackStatusUpdate((status: any) => {
+          if (status.didJustFinish) {
+            // Remove word from active set when sound finishes
+            setActiveTriggerWords(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(word);
+              return newSet;
+            });
+            
+            // Clean up the sound after it finishes
+            newSound.unloadAsync().catch(() => {});
+          }
+        });
       }
     } catch (error) {
       console.log("Error playing trigger sound:", error);
@@ -174,62 +262,103 @@ export default function BookDetailScreen() {
   const totalPages = currentChapter?.pages?.length || 0;
 
   // Calculate reading progress
-  const totalPagesInBook = book?.chapters?.reduce((total, chapter) => total + chapter.pages.length, 0) || 0;
-  const currentPageInBook = book?.chapters?.slice(0, currentChapterIndex).reduce((total, chapter) => total + chapter.pages.length, 0) + currentPageIndex + 1 || 0;
+  const totalPagesInBook = book?.chapters?.reduce((total: number, chapter: any) => total + chapter.pages.length, 0) || 0;
+  const currentPageInBook = book?.chapters?.slice(0, currentChapterIndex).reduce((total: number, chapter: any) => total + chapter.pages.length, 0) + currentPageIndex + 1 || 0;
   const readingProgress = totalPagesInBook > 0 ? currentPageInBook / totalPagesInBook : 0;
 
   // Navigation functions
   const goToNextPage = () => {
     if (currentPageIndex < totalPages - 1) {
-      setCurrentPageIndex(currentPageIndex + 1);
-      loadSoundscapeForPage();
+      const newPageIndex = currentPageIndex + 1;
+      setCurrentPageIndex(newPageIndex);
+      loadSoundscapeForPage(currentChapterIndex, newPageIndex);
     } else if (currentChapterIndex < totalChapters - 1) {
       // Move to first page of next chapter
-      setCurrentChapterIndex(currentChapterIndex + 1);
+      const newChapterIndex = currentChapterIndex + 1;
+      setCurrentChapterIndex(newChapterIndex);
       setCurrentPageIndex(0);
-      loadSoundscapeForPage();
+      loadSoundscapeForPage(newChapterIndex, 0);
     }
   };
 
   const goToPreviousPage = () => {
     if (currentPageIndex > 0) {
-      setCurrentPageIndex(currentPageIndex - 1);
-      loadSoundscapeForPage();
+      const newPageIndex = currentPageIndex - 1;
+      setCurrentPageIndex(newPageIndex);
+      loadSoundscapeForPage(currentChapterIndex, newPageIndex);
     } else if (currentChapterIndex > 0) {
       // Move to last page of previous chapter
       const prevChapter = book?.chapters?.[currentChapterIndex - 1];
       const lastPageIndex = (prevChapter?.pages?.length || 1) - 1;
-      setCurrentChapterIndex(currentChapterIndex - 1);
+      const newChapterIndex = currentChapterIndex - 1;
+      setCurrentChapterIndex(newChapterIndex);
       setCurrentPageIndex(lastPageIndex);
-      loadSoundscapeForPage();
+      loadSoundscapeForPage(newChapterIndex, lastPageIndex);
     }
   };
 
   // Load soundscape for current page
-  const loadSoundscapeForPage = async () => {
+  const loadSoundscapeForPage = async (chapterIndex?: number, pageIndex?: number) => {
     try {
-      if (sound) {
-        await sound.unloadAsync();
-      }
-
+      // Use provided indices or fall back to current state
+      const targetChapterIndex = chapterIndex ?? currentChapterIndex;
+      const targetPageIndex = pageIndex ?? currentPageIndex;
+      
+      console.log("Loading soundscape for page...", { targetChapterIndex, targetPageIndex });
       // Stop any ongoing reading timer
       stopReadingTimer();
 
-      const response = await fetch(`http://localhost:8000/soundscape/book/${bookId}/chapter${currentChapterIndex + 1}/page/${currentPageIndex + 1}`);
+      const response = await fetch(`http://localhost:8000/soundscape/book/${bookId}/chapter${targetChapterIndex + 1}/page/${targetPageIndex + 1}`);
       const soundscapeData = await response.json();
+      setSoundscapeData(soundscapeData); // Store soundscape data for display
+      
+      console.log("Soundscape data received:", soundscapeData);
+      
+      console.log("Current sound before cleanup:", sound ? "exists" : "null");
+      
+      // Check if carpet sound is changing by comparing with the current carpet sound
+      const newCarpetSound = soundscapeData.carpet_tracks?.[0] || null;
+      const isCarpetChanging = newCarpetSound !== currentCarpetSound;
+      
+      console.log("Carpet sound change check:", { 
+        current: currentCarpetSound, 
+        new: newCarpetSound, 
+        isChanging: isCarpetChanging 
+      });
+      
+      // Always stop the current sound before starting a new one to prevent overlap
+      if (sound) {
+        console.log("Stopping current sound to prevent overlap...");
+        await sound.stopAsync();
+        await sound.unloadAsync();
+        setSound(null);
+        console.log("Current sound stopped");
+      }
       
       if (soundscapeData.carpet_tracks && soundscapeData.carpet_tracks.length > 0) {
         const soundFile = soundscapeData.carpet_tracks[0];
+        console.log("Loading carpet sound:", soundFile);
         const soundAsset = SOUND_MAP[soundFile];
         
         if (soundAsset) {
           const { sound: newSound } = await Audio.Sound.createAsync(soundAsset, {
-            shouldPlay: true,
+            shouldPlay: false, // Don't play immediately
             isLooping: true,
-            volume: 0.5,
+            volume: 0.5, // Set volume immediately
           });
+          
+          // Always fade in new sounds for smooth transitions
+          await fadeInSound(newSound);
+          console.log("Sound faded in");
           setSound(newSound);
+          setCurrentCarpetSound(soundFile); // Update the current carpet sound
+          console.log("Carpet sound set successfully");
+        } else {
+          console.log("Sound asset not found for:", soundFile);
         }
+      } else {
+        console.log("No carpet tracks found");
+        setCurrentCarpetSound(null); // Clear carpet sound if none found
       }
 
       // Find trigger words in current page content
@@ -262,8 +391,14 @@ export default function BookDetailScreen() {
 
     // Cleanup: stop sound on unmount
     return () => {
+      // Immediate stop without waiting
       if (sound) {
-        sound.unloadAsync();
+        sound.stopAsync().catch(() => {});
+        sound.unloadAsync().catch(() => {});
+      }
+      if (previousSound) {
+        previousSound.stopAsync().catch(() => {});
+        previousSound.unloadAsync().catch(() => {});
       }
     };
   }, [bookId]);
@@ -271,21 +406,44 @@ export default function BookDetailScreen() {
   // Load soundscape when book data is available and page changes
   React.useEffect(() => {
     if (book && currentPage) {
-      loadSoundscapeForPage();
+      loadSoundscapeForPage(currentChapterIndex, currentPageIndex);
     }
   }, [book, currentChapterIndex, currentPageIndex]);
+
+  // App state change listener to stop sounds when app goes to background
+  React.useEffect(() => {
+    const handleAppStateChange = (nextAppState: string) => {
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        forceStopAllSounds();
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription?.remove();
+    };
+  }, []);
+
+  // Focus effect to stop sounds when navigating away from this screen
+  useFocusEffect(
+    React.useCallback(() => {
+      // This runs when the screen comes into focus
+      return () => {
+        // This runs when the screen loses focus (user navigates away)
+        console.log("Screen losing focus, stopping sounds...");
+        forceStopAllSounds();
+      };
+    }, [])
+  );
 
   // Cleanup effect to stop sounds when component unmounts
   React.useEffect(() => {
     return () => {
-      // Stop carpet sound when component unmounts
-      if (sound) {
-        sound.unloadAsync();
-      }
-      // Stop any ongoing reading timer
-      stopReadingTimer();
+      console.log("Component unmounting, stopping sounds...");
+      forceStopAllSounds();
     };
-  }, [sound]); // Depend on sound to ensure cleanup runs when sound changes
+  }, []); // Empty dependency array to ensure cleanup runs only on unmount
 
   if (loading) {
     return (
@@ -366,21 +524,26 @@ export default function BookDetailScreen() {
           <Text style={styles.navButtonText}>Previous</Text>
         </TouchableOpacity>
 
-        <View style={styles.pageInfo}>
-          <Text style={styles.pageInfoText}>
-            {currentChapterIndex + 1}/{totalChapters} • {currentPageIndex + 1}/{totalPages}
-          </Text>
-          {triggerWords.length > 0 && (
-            <Text style={styles.triggerInfo}>
-              {triggerWords.length} sound triggers found
-            </Text>
-          )}
-          {activeTriggerWords.size > 0 && (
-            <Text style={styles.activeTriggers}>
-              Playing: {Array.from(activeTriggerWords).join(', ')}
-            </Text>
-          )}
-        </View>
+                 <View style={styles.pageInfo}>
+           <Text style={styles.pageInfoText}>
+             {currentChapterIndex + 1}/{totalChapters} • {currentPageIndex + 1}/{totalPages}
+           </Text>
+           {triggerWords.length > 0 && (
+             <Text style={styles.triggerInfo}>
+               {triggerWords.length} sound triggers found
+             </Text>
+           )}
+           {activeTriggerWords.size > 0 && (
+             <Text style={styles.activeTriggers}>
+               Trigger Sounds: {Array.from(activeTriggerWords).join(', ')}
+             </Text>
+           )}
+           {sound && (
+             <Text style={styles.carpetSound}>
+               Carpet Sound: {soundscapeData?.carpet_tracks?.[0] || 'Unknown'}
+             </Text>
+           )}
+         </View>
 
         <TouchableOpacity
           style={[
@@ -451,7 +614,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#fff",
     lineHeight: 24,
-  },
+  } as any,
   navigationContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -522,14 +685,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 8,
   },
-  activeTriggers: {
-    color: "#ff6b6b",
-    fontSize: 12,
-    marginTop: 4,
-  },
-  highlightedWord: {
-    backgroundColor: "#ff6b6b",
-    padding: 2,
-    borderRadius: 4,
-  },
+     activeTriggers: {
+     color: "#ff6b6b",
+     fontSize: 12,
+     marginTop: 4,
+   },
+   carpetSound: {
+     color: "#4CAF50",
+     fontSize: 12,
+     marginTop: 4,
+   },
+   highlightedWord: {
+     backgroundColor: "#ff6b6b",
+     padding: 2,
+     borderRadius: 4,
+   },
 }); 
