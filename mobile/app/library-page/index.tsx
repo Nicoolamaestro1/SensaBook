@@ -1,13 +1,12 @@
 import * as React from 'react';
-import { View, StyleSheet, FlatList, Dimensions, TouchableOpacity } from 'react-native';
-import { Text, Button, Card, ActivityIndicator } from 'react-native-paper';
+import { View, Image, StyleSheet, FlatList, Dimensions, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 
 export default function LibraryScreen() {
   const router = useRouter();
   const [books, setBooks] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const [numColumns, setNumColumns] = React.useState(1);
+
 
   React.useEffect(() => {
     fetch('http://127.0.0.1:8000/api/books')
@@ -19,44 +18,41 @@ export default function LibraryScreen() {
       .catch(() => setLoading(false));
   }, []);
 
-  React.useEffect(() => {
-    const updateColumns = () => {
-      const width = Dimensions.get('window').width;
-      if (width < 600) setNumColumns(1);
-      else if (width < 900) setNumColumns(2);
-      else setNumColumns(3);
-    };
-    updateColumns();
-    const subscription = Dimensions.addEventListener('change', updateColumns);
-    return () => subscription?.remove();
-  }, []);
 
   return (
     <View style={styles.container}>
-      <Text variant="headlineMedium" style={{ marginBottom: 24 }}>📚 Welcome to the Library!</Text>
+      <Text style={styles.heading}>📚 Welcome to the Library!</Text>
+
       {loading ? (
-        <ActivityIndicator style={{ marginTop: 24 }} animating size="large" />
+        <ActivityIndicator style={{ marginTop: 24 }} size="large" color="#2563eb" />
       ) : (
         <FlatList
           contentContainerStyle={styles.row}
           data={books}
           keyExtractor={(item) => item.id.toString()}
-          numColumns={numColumns}
+          numColumns={3}
+          key={3} 
           renderItem={({ item }) => (
-            <View style={[styles.cardWrapper, { flex: 1 / numColumns }]}>
-              <TouchableOpacity
-                style={{ flex: 1 }}
-                onPress={() => router.push(`/book/${item.id}`)}
-                activeOpacity={0.85}
-              >
-                <Card style={styles.card}>
-                  <Card.Title title={item.title} subtitle={item.author} />
-                  <Card.Content>
-                    <Text style={{ fontSize: 12 }}>{item.summary || 'No description.'}</Text>
-                  </Card.Content>
-                </Card>
-              </TouchableOpacity>
-            </View>
+            <View style={[styles.cardWrapper, { flex: 1 / 3 }]}>
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => router.push(`/book/${item.id}`)}
+              activeOpacity={0.85}
+            >
+              {/* Cover slika */}
+              {item.cover_url ? (
+                <Image
+                  source={{ uri: item.cover_url }}
+                  style={styles.cardImage}
+                  resizeMode="cover"
+                />
+              ) : null}
+
+              {/* Tekstualni deo */}
+              <Text style={styles.cardTitle}>{item.title}</Text>
+              <Text style={styles.cardSubtitle}>{item.author}</Text>
+            </TouchableOpacity>
+          </View>
           )}
           ListEmptyComponent={
             <Text style={{ textAlign: 'center', marginTop: 16 }}>
@@ -65,39 +61,76 @@ export default function LibraryScreen() {
           }
         />
       )}
-      <Button
-        mode="contained"
-        style={{ marginTop: 32, marginBottom: 24 }}
-        onPress={() => router.replace('/')}
-      >
-        Logout
-      </Button>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    paddingTop: 24,
-    alignItems: "center",
-    backgroundColor: "#fff",
-    paddingBottom: 64,
+     flex: 1,
+    alignSelf: "center",
+    width: "100%",
+    maxWidth: 1200,
+  },
+  heading: {
+    fontSize: 22,
+    fontWeight: "bold",
+    marginBottom: 24,
+    textAlign: "center"
   },
   row: {
-    alignItems: "flex-start",
     paddingHorizontal: 8,
     paddingBottom: 16,
+    marginBottom: 30
   },
   cardWrapper: {
-    padding: 8,
-    minWidth: 220,
-    maxWidth: 400,
+    flex: 1,
+    padding: 10,
   },
   card: {
-    flex: 1,
+    height: "100%",
     borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#35333A',
+    padding: 0,
+    shadowOpacity: 0.1,
+    elevation: 2,
+  },
+  cardImage: {
+    width: "100%",
+    aspectRatio: 1 / 1, 
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 4,
+    paddingHorizontal: 16,
+    textAlign: "center",
+    color: "#fff"
+  },
+  cardSubtitle: {
+    fontSize: 14,
+    color: "#6b7280",
+    marginBottom: 8,
+    paddingHorizontal: 16,
+    textAlign: "center"
+  },
+  cardSummary: {
+    fontSize: 12,
+    color: "#374151",
+  },
+  logoutBtn: {
+    marginTop: 32,
+    marginBottom: 24,
+    backgroundColor: "#2563eb",
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+  },
+  logoutText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 16,
+    textAlign: "center",
   },
 });
