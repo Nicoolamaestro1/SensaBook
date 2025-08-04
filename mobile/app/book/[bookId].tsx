@@ -16,6 +16,7 @@ import stormyNight from '../sounds/stormy_night.mp3';
 import storm from '../sounds/storm.mp3';
 import cabinRain from '../sounds/cabin_rain.mp3';
 import cabin from '../sounds/cabin.mp3';
+import windHowl from '../sounds/wind.mp3';
 
 const SOUND_MAP: Record<string, any> = {
   "windy_mountains.mp3": windyMountains,
@@ -42,6 +43,7 @@ const SOUND_MAP: Record<string, any> = {
   "building.mp3": cabinRain, // Building ambience - using cabin rain
   "apartment.mp3": cabinRain, // Apartment ambience - using cabin rain
   "home.mp3": cabinRain, // Home ambience - using cabin rain
+  "wind.mp3": windHowl,
 };
 
 export default function BookDetailScreen() {
@@ -65,7 +67,7 @@ export default function BookDetailScreen() {
   const TRIGGER_WORDS: Record<string, any> = {
     'thunder': thunderCity, // Using thunder city sound for thunder
     'footsteps': footstepsApproaching,
-    'wind': windyMountains,
+    'wind': windHowl, // Using wind.mp3 for wind trigger
     'storm': storm,
   };
 
@@ -264,8 +266,6 @@ export default function BookDetailScreen() {
   // Calculate reading progress
   const totalPagesInBook = book?.chapters?.reduce((total: number, chapter: any) => total + chapter.pages.length, 0) || 0;
   const currentPageInBook = book?.chapters?.slice(0, currentChapterIndex).reduce((total: number, chapter: any) => total + chapter.pages.length, 0) + currentPageIndex + 1 || 0;
-  const totalPagesInBook = book?.chapters?.reduce((total: number, chapter: any) => total + chapter.pages.length, 0) || 0;
-  const currentPageInBook = book?.chapters?.slice(0, currentChapterIndex).reduce((total: number, chapter: any) => total + chapter.pages.length, 0) + currentPageIndex + 1 || 0;
   const readingProgress = totalPagesInBook > 0 ? currentPageInBook / totalPagesInBook : 0;
 
   // Navigation functions
@@ -340,7 +340,6 @@ export default function BookDetailScreen() {
       if (soundscapeData.carpet_tracks && soundscapeData.carpet_tracks.length > 0) {
         const soundFile = soundscapeData.carpet_tracks[0];
         console.log("Loading carpet sound:", soundFile);
-        const soundAsset = SOUND_MAP[soundFile];
         const soundAsset = SOUND_MAP[soundFile as keyof typeof SOUND_MAP];
         
         if (soundAsset) {

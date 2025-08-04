@@ -1,12 +1,39 @@
 import * as React from 'react';
 import { View, Image, StyleSheet, FlatList, Dimensions, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
+import { Audio } from 'expo-av';
 
 export default function LibraryScreen() {
   const router = useRouter();
   const [books, setBooks] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
 
+  // Stop all sounds when library page comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      const stopAllSounds = async () => {
+        try {
+          console.log("Library page focused - stopping all sounds...");
+          
+          // Stop all active audio sessions
+          await Audio.setIsEnabledAsync(false);
+          await Audio.setIsEnabledAsync(true);
+          
+          console.log("All sounds stopped for library page");
+        } catch (error) {
+          console.log("Error stopping sounds:", error);
+        }
+      };
+      
+      stopAllSounds();
+      
+      return () => {
+        // Cleanup when leaving the library page
+        console.log("Leaving library page");
+      };
+    }, [])
+  );
 
   React.useEffect(() => {
     fetch('http://127.0.0.1:8000/api/books')

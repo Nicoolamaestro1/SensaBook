@@ -65,7 +65,7 @@ WORD_TO_SOUND = {
     "owl": "owl_hoot.mp3",
     "scream": "distant_scream.mp3",
     "fire": "fire_crackle.mp3",
-    "wind": "wind_blow.mp3",
+    "wind": "wind.mp3",
     "chains": "chains_rattle.mp3",
     "footsteps": "footstep_wood.mp3",
     "clank": "armor_clank.mp3",
