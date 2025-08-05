@@ -4,7 +4,13 @@ from typing import List, Dict, Tuple
 from sqlalchemy.orm import Session
 from .book import get_page
 
-# Scene sound mappings for carpet sounds
+# Define priority for scene-based ambience layering
+CARPET_PRIORITY = [
+    "fear", "storm",  "indoors", "castle", "hotel",
+    "library", "forest", "mountains", "travel", "eating"
+]
+
+# Main mapping of scenes to keywords and their carpet tracks
 SCENE_SOUND_MAPPINGS = {
     "eating": {
         "keywords": ["dinner", "supper", "eating", "meal", "restaurant", "food", "dining", "feast"],
