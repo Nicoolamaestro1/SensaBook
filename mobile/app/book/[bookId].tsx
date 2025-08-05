@@ -1,9 +1,11 @@
 import React from "react";
 import { useLocalSearchParams, useFocusEffect } from "expo-router";
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Alert, AppState } from "react-native";
-import { Card, ProgressBar } from "react-native-paper";
+import { ProgressBar } from "react-native-paper";
 import { Audio } from "expo-av";
-import { Ionicons } from "@expo/vector-icons";
+import { Dimensions } from "react-native";
+
+const { height, width } = Dimensions.get("window");
 
 // -------------- SOUND MAP (local assets) --------------
 import windyMountains from '../sounds/windy_mountains.mp3'; 
@@ -52,6 +54,8 @@ export default function BookDetailScreen() {
   const [loading, setLoading] = React.useState(true);
   const [currentChapterIndex, setCurrentChapterIndex] = React.useState(0);
   const [currentPageIndex, setCurrentPageIndex] = React.useState(0);
+  const [currentChunkIndex, setCurrentChunkIndex] = React.useState(0);
+  const [paginatedChunks, setPaginatedChunks] = React.useState<string[]>([]);
   const [sound, setSound] = React.useState<Audio.Sound | null>(null);
   const [previousSound, setPreviousSound] = React.useState<Audio.Sound | null>(null);
   const [allActiveSounds, setAllActiveSounds] = React.useState<Set<Audio.Sound>>(new Set());
@@ -136,6 +140,35 @@ export default function BookDetailScreen() {
     });
     
     return foundTriggers;
+  };
+  
+  // Helper: divide text to chanks
+   const paginateText = (
+    text: string,
+    fontSize = 16,
+    lineHeight = 24,
+  ) => {
+    const words = text.split(/\s+/);
+
+    // how much vertical space is available for text (90% of the screen height)
+    const usableHeight = height * 0.9;
+    const linesPerPage = Math.floor(usableHeight / lineHeight);
+
+    // rough estimate: average 6 characters per word
+    const avgCharsPerWord = 6; 
+    const charsPerLine = Math.floor(width / (fontSize * 0.6));
+    const wordsPerLine = Math.floor(charsPerLine / avgCharsPerWord);
+
+    // final: how many words per page
+    const wordsPerPage = linesPerPage * wordsPerLine;
+
+    // split text into pages
+    const pages: string[] = [];
+    for (let i = 0; i < words.length; i += wordsPerPage) {
+      pages.push(words.slice(i, i + wordsPerPage).join(" "));
+    }
+
+    return pages;
   };
 
   // Start reading timer
@@ -270,12 +303,17 @@ export default function BookDetailScreen() {
 
   // Navigation functions
   const goToNextPage = () => {
+    if (currentChunkIndex < paginatedChunks.length - 1) {
+      setCurrentChunkIndex(currentChunkIndex + 1);
+      return;
+    }
+
+    // if on last chunk go to next page
     if (currentPageIndex < totalPages - 1) {
       const newPageIndex = currentPageIndex + 1;
       setCurrentPageIndex(newPageIndex);
       loadSoundscapeForPage(currentChapterIndex, newPageIndex);
     } else if (currentChapterIndex < totalChapters - 1) {
-      // Move to first page of next chapter
       const newChapterIndex = currentChapterIndex + 1;
       setCurrentChapterIndex(newChapterIndex);
       setCurrentPageIndex(0);
@@ -284,12 +322,17 @@ export default function BookDetailScreen() {
   };
 
   const goToPreviousPage = () => {
+    if (currentChunkIndex > 0) {
+      setCurrentChunkIndex(currentChunkIndex - 1);
+      return;
+    }
+
+    // if on first chunks go to previous page
     if (currentPageIndex > 0) {
       const newPageIndex = currentPageIndex - 1;
       setCurrentPageIndex(newPageIndex);
       loadSoundscapeForPage(currentChapterIndex, newPageIndex);
     } else if (currentChapterIndex > 0) {
-      // Move to last page of previous chapter
       const prevChapter = book?.chapters?.[currentChapterIndex - 1];
       const lastPageIndex = (prevChapter?.pages?.length || 1) - 1;
       const newChapterIndex = currentChapterIndex - 1;
@@ -409,6 +452,11 @@ export default function BookDetailScreen() {
   React.useEffect(() => {
     if (book && currentPage) {
       loadSoundscapeForPage(currentChapterIndex, currentPageIndex);
+
+      // Podeli tekst na chunkove kad se promeni strana
+      const chunks = paginateText(currentPage.content);
+      setPaginatedChunks(chunks);
+      setCurrentChunkIndex(0);
     }
   }, [book, currentChapterIndex, currentPageIndex]);
 
@@ -472,94 +520,74 @@ export default function BookDetailScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Progress bar */}
+    <>
       <View style={styles.progressContainer}>
         <ProgressBar 
           progress={readingProgress} 
-          color="#4CAF50" 
+          color="#5b4636" 
           style={styles.progressBar}
         />
         <Text style={styles.progressText}>
           {currentPageInBook} of {totalPagesInBook} pages
         </Text>
       </View>
+      <View style={styles.container}>
+        {/* Progress bar */}
 
-      {/* Header with book info */}
-      <Card style={styles.headerCard}>
-        <Card.Title title={book.title} subtitle={book.author} />
-        <Card.Content>
-          <Text style={styles.summary}>{book.summary}</Text>
-        </Card.Content>
-      </Card>
-
-      {/* Page content */}
-      <View style={styles.pageContainer}>
-        <Card style={styles.pageCard}>
-          <Card.Content>
+        {/* Page content */}
+        <View style={styles.pageContainer}>
+           <TouchableOpacity
+            style={styles.leftTouchable}
+            onPress={goToPreviousPage}
+            activeOpacity={1}
+          />
+          <TouchableOpacity
+            style={styles.rightTouchable}
+            onPress={goToNextPage}
+            activeOpacity={1}
+          />
+          <View style={styles.pageCard}>
             <Text style={styles.chapterTitle}>
               {currentChapter?.title
                 ? `Chapter: ${currentChapter.title}`
                 : `Chapter ${currentChapter?.chapter_number}`}
             </Text>
-            <Text style={styles.pageNumber}>
-              Page {currentPage.page_number} of {totalPages}
-            </Text>
+           
             <Text style={styles.pageText}>
-              {renderTextWithHighlights(currentPage.content)}
+              {renderTextWithHighlights(paginatedChunks[currentChunkIndex] || "")}
             </Text>
-          </Card.Content>
-        </Card>
+          </View>
+        </View>
+
+        {/* Navigation controls */}
+        <View style={styles.navigationContainer}>
+         
+
+          <View style={styles.pageInfo}>
+            <Text style={styles.pageInfoText}>
+              {currentChapterIndex + 1}/{totalChapters} • {currentPageIndex + 1}/{totalPages}
+            </Text>
+            {triggerWords.length > 0 && (
+              <Text style={styles.triggerInfo}>
+                {triggerWords.length} sound triggers found
+              </Text>
+            )}
+            {activeTriggerWords.size > 0 && (
+              <Text style={styles.activeTriggers}>
+                Trigger Sounds: {Array.from(activeTriggerWords).join(', ')}
+              </Text>
+            )}
+            {sound && (
+              <Text style={styles.carpetSound}>
+                Carpet Sound: {soundscapeData?.carpet_tracks?.[0] || 'Unknown'}
+              </Text>
+            )}
+          </View>
+
+          
+        </View>
       </View>
-
-      {/* Navigation controls */}
-      <View style={styles.navigationContainer}>
-        <TouchableOpacity
-          style={[
-            styles.navButton,
-            (currentChapterIndex === 0 && currentPageIndex === 0) && styles.disabledButton
-          ]}
-          onPress={goToPreviousPage}
-          disabled={currentChapterIndex === 0 && currentPageIndex === 0}
-        >
-          <Ionicons name="chevron-back" size={24} color="#fff" />
-          <Text style={styles.navButtonText}>Previous</Text>
-        </TouchableOpacity>
-
-                 <View style={styles.pageInfo}>
-           <Text style={styles.pageInfoText}>
-             {currentChapterIndex + 1}/{totalChapters} • {currentPageIndex + 1}/{totalPages}
-           </Text>
-           {triggerWords.length > 0 && (
-             <Text style={styles.triggerInfo}>
-               {triggerWords.length} sound triggers found
-             </Text>
-           )}
-           {activeTriggerWords.size > 0 && (
-             <Text style={styles.activeTriggers}>
-               Trigger Sounds: {Array.from(activeTriggerWords).join(', ')}
-             </Text>
-           )}
-           {sound && (
-             <Text style={styles.carpetSound}>
-               Carpet Sound: {soundscapeData?.carpet_tracks?.[0] || 'Unknown'}
-             </Text>
-           )}
-         </View>
-
-        <TouchableOpacity
-          style={[
-            styles.navButton,
-            (currentChapterIndex === totalChapters - 1 && currentPageIndex === totalPages - 1) && styles.disabledButton
-          ]}
-          onPress={goToNextPage}
-          disabled={currentChapterIndex === totalChapters - 1 && currentPageIndex === totalPages - 1}
-        >
-          <Text style={styles.navButtonText}>Next</Text>
-          <Ionicons name="chevron-forward" size={24} color="#fff" />
-        </TouchableOpacity>
-      </View>
-    </View>
+    </>
   );
 }
 
@@ -567,33 +595,48 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: "#1a1a1a",
+    paddingTop: 0,
+    position: "relative"
+  },
+  leftTouchable: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: "40%", 
+    zIndex: 10,
+  },
+  rightTouchable: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: "40%", 
+    zIndex: 10,
   },
   progressContainer: {
     marginBottom: 16,
   },
   progressBar: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#3a3a3a",
+    height: 2,
+    borderRadius: 0,
+    backgroundColor: "transparent",
   },
   progressText: {
-    color: "#ccc",
+    color: "#5b4636",
     fontSize: 12,
     textAlign: "center",
     marginTop: 4,
   },
-  headerCard: {
-    marginBottom: 16,
-    backgroundColor: "#2a2a2a",
-  },
+ 
   pageContainer: {
     flex: 1,
   },
   pageCard: {
     flex: 1,
-    backgroundColor: "#2a2a2a",
+    backgroundColor: "transparent",
     marginBottom: 16,
+    boxShadow: "none"
   },
   summary: {
     marginBottom: 16,
@@ -603,8 +646,9 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontWeight: "bold",
     fontSize: 18,
-    color: "#fff",
+   color: "#5b4636",
     marginBottom: 8,
+    fontFamily: "Montserrat_700Bold",
   },
   pageNumber: {
     fontSize: 14,
@@ -613,13 +657,15 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   pageText: {
+    fontFamily: "Montserrat_400Regular",
     fontSize: 16,
-    color: "#fff",
+    color: "#5b4636",
+    textAlign: "justify",
     lineHeight: 24,
   } as any,
   navigationContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
     paddingVertical: 16,
     backgroundColor: "#2a2a2a",
@@ -647,6 +693,7 @@ const styles = StyleSheet.create({
   },
   pageInfo: {
     alignItems: "center",
+    textAlign: "center"
   },
   pageInfoText: {
     color: "#ccc",

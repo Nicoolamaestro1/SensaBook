@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Animated } from "react-native";
-import LoginScreen from "../login";
+import WelcomeScreen from "./auth/index";
 
 export default function Index() {
   const logoOpacity = useRef(new Animated.Value(1)).current;   
@@ -39,7 +39,7 @@ export default function Index() {
       {/* Logo animation */}
       {!showLogin && (
         <Animated.Image
-          source={require("../../assets/images/logo.png")} 
+          source={require("../assets/images/logo.png")} 
           style={{
             width: 120,
             height: 120,
@@ -53,9 +53,12 @@ export default function Index() {
       {/* Login animation */}
       {showLogin && (
         <Animated.View style={{ flex: 1, width: "100%", opacity: loginOpacity }}>
-          <LoginScreen />
+          <WelcomeScreen />
         </Animated.View>
       )}
     </View>
   );
 }
+
+
+
