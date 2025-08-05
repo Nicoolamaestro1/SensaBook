@@ -6,19 +6,35 @@ import { Audio } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
 
 // -------------- SOUND MAP (local assets) --------------
-import windyMountains from '../sounds/windy_mountains.mp3'; 
-import defaultAmbience from '../sounds/default_ambience.mp3';
-import tenseDrones from '../sounds/tense_drones.mp3';
-import footstepsApproaching from '../sounds/footsteps-approaching-316715.mp3';
-import atmosphereSound from '../sounds/atmosphere-sound-effect-239969.mp3';
-import thunderCity from '../sounds/thunder-city-377703.mp3';
-import stormyNight from '../sounds/stormy_night.mp3';
-import storm from '../sounds/storm.mp3';
-import cabinRain from '../sounds/cabin_rain.mp3';
-import cabin from '../sounds/cabin.mp3';
-import windHowl from '../sounds/wind.mp3';
+import windyMountains from '../sounds/ambience/windy_mountains.mp3'; 
+import defaultAmbience from '../sounds/ambience/default_ambience.mp3';
+import tenseDrones from '../sounds/ambience/tense_drones.mp3';
+import footstepsApproaching from '../sounds/triggers/footsteps-approaching-316715.mp3';
+import atmosphereSound from '../sounds/ambience/atmosphere-sound-effect-239969.mp3';
+import thunderCity from '../sounds/ambience/thunder-city-377703.mp3';
+import stormyNight from '../sounds/ambience/stormy_night.mp3';
+import storm from '../sounds/triggers/storm.mp3';
+import cabinRain from '../sounds/ambience/cabin_rain.mp3';
+import cabin from '../sounds/ambience/cabin.mp3';
+import windHowl from '../sounds/triggers/wind.mp3';
 
 const SOUND_MAP: Record<string, any> = {
+  // Ambience sounds (carpet sounds)
+  "ambience/windy_mountains.mp3": windyMountains,
+  "ambience/default_ambience.mp3": defaultAmbience,
+  "ambience/tense_drones.mp3": tenseDrones,
+  "ambience/atmosphere-sound-effect-239969.mp3": atmosphereSound,
+  "ambience/thunder-city-377703.mp3": thunderCity,
+  "ambience/stormy_night.mp3": stormyNight,
+  "ambience/cabin_rain.mp3": cabinRain, // Indoor cabin sound with rain
+  "ambience/cabin.mp3": cabin, // Indoor cabin sound without rain
+  
+  // Trigger sounds
+  "triggers/footsteps-approaching-316715.mp3": footstepsApproaching,
+  "triggers/storm.mp3": storm,
+  "triggers/wind.mp3": windHowl,
+  
+  // Legacy mappings for backward compatibility
   "windy_mountains.mp3": windyMountains,
   "default_ambience.mp3": defaultAmbience,
   "tense_drones.mp3": tenseDrones,
@@ -27,15 +43,17 @@ const SOUND_MAP: Record<string, any> = {
   "thunder-city-377703.mp3": thunderCity,
   "stormy_night.mp3": stormyNight,
   "storm.mp3": storm,
-  "cabin_rain.mp3": cabinRain, // Indoor cabin sound with rain
-  "cabin.mp3": cabin, // Indoor cabin sound without rain
+  "cabin_rain.mp3": cabinRain,
+  "cabin.mp3": cabin,
+  "wind.mp3": windHowl,
+  
+  // Additional mappings for various scenarios
   "restaurant_murmur.mp3": atmosphereSound, // Restaurant ambience
   "hotel_lobby.mp3": atmosphereSound, // Hotel lobby ambience
   "quiet_museum.mp3": defaultAmbience, // Library/museum ambience
   "horse_carriage.mp3": footstepsApproaching, // Travel sounds
   "stone_echoes.mp3": tenseDrones, // Castle/stone ambience
   "night_forest.mp3": windyMountains, // Forest ambience
-  // Additional indoor sounds that might be returned by backend
   "indoors.mp3": cabinRain, // Generic indoor sound - using cabin rain
   "inside.mp3": cabinRain, // Inside building sound - using cabin rain
   "house.mp3": cabinRain, // House ambience - using cabin rain
@@ -43,7 +61,6 @@ const SOUND_MAP: Record<string, any> = {
   "building.mp3": cabinRain, // Building ambience - using cabin rain
   "apartment.mp3": cabinRain, // Apartment ambience - using cabin rain
   "home.mp3": cabinRain, // Home ambience - using cabin rain
-  "wind.mp3": windHowl,
 };
 
 export default function BookDetailScreen() {
