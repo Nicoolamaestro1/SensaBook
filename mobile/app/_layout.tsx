@@ -1,6 +1,12 @@
+import React from "react";
 import { Stack } from "expo-router";
-import { ImageBackground } from "react-native";
+import { ImageBackground, ActivityIndicator, View } from "react-native";
 import { ThemeProvider, DefaultTheme } from "@react-navigation/native";
+import {
+  useFonts,
+  Montserrat_400Regular,
+  Montserrat_700Bold,
+} from "@expo-google-fonts/montserrat";
 
 const CustomTheme = {
   ...DefaultTheme,
@@ -11,6 +17,19 @@ const CustomTheme = {
 };
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    Montserrat_400Regular,
+    Montserrat_700Bold,
+  });
+
+  if (!fontsLoaded) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
   return (
     <ImageBackground
       source={require("../assets/images/bg-books.jpg")}

@@ -2,7 +2,13 @@ import * as React from 'react';
 import { View, Image, StyleSheet, FlatList, Dimensions, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
+import {
+  useFonts,
+  Montserrat_400Regular,
+  Montserrat_700Bold,
+} from "@expo-google-fonts/montserrat";
 import { Audio } from 'expo-av';
+const { width } = Dimensions.get("window");
 
 export default function LibraryScreen() {
   const router = useRouter();
@@ -94,6 +100,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     width: "100%",
     maxWidth: 1200,
+    
   },
   heading: {
     fontSize: 22,
@@ -110,7 +117,7 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     flex: 1,
-    padding: 10,
+    padding: 5,
   },
   card: {
     height: "100%",
@@ -126,15 +133,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   cardTitle: {
-    fontSize: 16,
+    fontSize: width * 0.025,
     fontWeight: "bold",
     marginBottom: 4,
-    paddingHorizontal: 16,
+    paddingHorizontal: 5,
     textAlign: "center",
-    color: "#fff"
+    color: "#fff",
+    fontFamily: "Montserrat_700Bold",
   },
   cardSubtitle: {
-    fontSize: 14,
+    fontSize: width * 0.024,
     color: "#6b7280",
     marginBottom: 8,
     paddingHorizontal: 16,
