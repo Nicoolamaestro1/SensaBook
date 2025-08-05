@@ -8,12 +8,11 @@ import {
   Montserrat_700Bold,
 } from "@expo-google-fonts/montserrat";
 import { Audio } from 'expo-av';
+import { useBooks } from '../hooks/useBooks';
 const { width } = Dimensions.get("window");
 
 export default function LibraryScreen() {
   const router = useRouter();
-  const [books, setBooks] = React.useState<any[]>([]);
-  const [loading, setLoading] = React.useState(true);
 
   // Stop all sounds when library page comes into focus
   useFocusEffect(
@@ -41,15 +40,7 @@ export default function LibraryScreen() {
     }, [])
   );
 
-  React.useEffect(() => {
-    fetch('http://127.0.0.1:8000/api/books')
-      .then((response) => response.json())
-      .then((data) => {
-        setBooks(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
+  const { books, loading } = useBooks() as { books: any[], loading: boolean };
 
   return (
     <View style={styles.container}>

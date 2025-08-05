@@ -8,7 +8,7 @@ import { Dimensions } from "react-native";
 const { height, width } = Dimensions.get("window");
 
 // -------------- SOUND MAP (local assets) --------------
-import windyMountains from '../sounds/windy_mountains.mp3'; 
+import windyMountains from '../sounds/windy_mountains.mp3';
 import defaultAmbience from '../sounds/default_ambience.mp3';
 import tenseDrones from '../sounds/tense_drones.mp3';
 import footstepsApproaching from '../sounds/footsteps-approaching-316715.mp3';
@@ -19,6 +19,8 @@ import storm from '../sounds/storm.mp3';
 import cabinRain from '../sounds/cabin_rain.mp3';
 import cabin from '../sounds/cabin.mp3';
 import windHowl from '../sounds/wind.mp3';
+
+import { useBook } from "../../hooks/useBooks";
 
 const SOUND_MAP: Record<string, any> = {
   "windy_mountains.mp3": windyMountains,
@@ -50,8 +52,6 @@ const SOUND_MAP: Record<string, any> = {
 
 export default function BookDetailScreen() {
   const { bookId } = useLocalSearchParams();
-  const [book, setBook] = React.useState<any>(null);
-  const [loading, setLoading] = React.useState(true);
   const [currentChapterIndex, setCurrentChapterIndex] = React.useState(0);
   const [currentPageIndex, setCurrentPageIndex] = React.useState(0);
   const [currentChunkIndex, setCurrentChunkIndex] = React.useState(0);
@@ -66,6 +66,8 @@ export default function BookDetailScreen() {
   const [playedWords, setPlayedWords] = React.useState<Set<string>>(new Set()); // Track played words to prevent duplicates
   const [soundscapeData, setSoundscapeData] = React.useState<any>(null); // Store soundscape data for display
   const [currentCarpetSound, setCurrentCarpetSound] = React.useState<string | null>(null); // Track current carpet sound
+
+  const { book, loading } = useBook(bookId as string) as { book: any, loading: boolean };
 
   // Trigger words and their corresponding sounds
   const TRIGGER_WORDS: Record<string, any> = {
@@ -425,15 +427,6 @@ export default function BookDetailScreen() {
   };
 
   React.useEffect(() => {
-    setLoading(true);
-    fetch(`http://127.0.0.1:8000/api/books/${bookId}`)
-      .then((response) => response.json())
-      .then((data) => {
-        setBook(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-
     // Cleanup: stop sound on unmount
     return () => {
       // Immediate stop without waiting
