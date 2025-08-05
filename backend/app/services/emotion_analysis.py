@@ -291,4 +291,134 @@ class AdvancedEmotionAnalyzer:
         return effects
 
 # Global analyzer instance
-emotion_analyzer = AdvancedEmotionAnalyzer() 
+emotion_analyzer = AdvancedEmotionAnalyzer()
+
+# Trigger words mapping for sound effects
+TRIGGER_WORDS = {
+    # Weather and atmospheric
+    "wind": "triggers/wind",
+    "thunder": "ambience/thunder-city-377703",
+    "rain": "ambience/cabin_rain",
+    "storm": "triggers/storm",
+    "lightning": "ambience/thunder-city-377703",
+    "snow": "triggers/wind",
+    "fog": "ambience/atmosphere-sound-effect-239969",
+    "breeze": "triggers/wind",
+    
+    # Fire and heat
+    "fire": "triggers/storm",
+    "flame": "triggers/storm",
+    "burning": "triggers/storm",
+    "smoke": "ambience/atmosphere-sound-effect-239969",
+    
+    # Water and liquid
+    "water": "ambience/cabin_rain",
+    "river": "ambience/cabin_rain",
+    "stream": "ambience/cabin_rain",
+    "ocean": "ambience/cabin_rain",
+    "splash": "ambience/cabin_rain",
+    "drip": "ambience/cabin_rain",
+    
+    # Movement and footsteps
+    "footsteps": "triggers/footsteps-approaching-316715",
+    "walking": "triggers/footsteps-approaching-316715",
+    "running": "triggers/footsteps-approaching-316715",
+    "horse": "triggers/footsteps-approaching-316715",
+    "carriage": "triggers/footsteps-approaching-316715",
+    "wheels": "triggers/footsteps-approaching-316715",
+    
+    # Combat and weapons
+    "sword": "ambience/tense_drones",
+    "battle": "ambience/tense_drones",
+    "fight": "ambience/tense_drones",
+    "war": "ambience/tense_drones",
+    "arrow": "ambience/tense_drones",
+    "shield": "ambience/tense_drones",
+    "armor": "ambience/tense_drones",
+    "chains": "ambience/tense_drones",
+    
+    # Magic and supernatural
+    "magic": "ambience/atmosphere-sound-effect-239969",
+    "spell": "ambience/atmosphere-sound-effect-239969",
+    "wizard": "ambience/atmosphere-sound-effect-239969",
+    "dragon": "triggers/storm",
+    "ghost": "ambience/atmosphere-sound-effect-239969",
+    "spirit": "ambience/atmosphere-sound-effect-239969",
+    
+    # Animals and creatures
+    "bird": "ambience/atmosphere-sound-effect-239969",
+    "owl": "ambience/atmosphere-sound-effect-239969",
+    "wolf": "triggers/storm",
+    "horse": "triggers/footsteps-approaching-316715",
+    "dog": "triggers/footsteps-approaching-316715",
+    "cat": "ambience/atmosphere-sound-effect-239969",
+    
+    # Human sounds
+    "scream": "ambience/tense_drones",
+    "whisper": "ambience/atmosphere-sound-effect-239969",
+    "laugh": "ambience/default_ambience",
+    "cry": "ambience/tense_drones",
+    "heartbeat": "ambience/tense_drones",
+    "breath": "ambience/atmosphere-sound-effect-239969",
+    
+    # Mechanical and objects
+    "door": "triggers/footsteps-approaching-316715",
+    "creak": "triggers/footsteps-approaching-316715",
+    "bell": "ambience/atmosphere-sound-effect-239969",
+    "book": "ambience/default_ambience",
+    "page": "ambience/default_ambience",
+    "clock": "ambience/atmosphere-sound-effect-239969",
+    
+    # Environmental
+    "forest": "ambience/cabin",
+    "mountain": "ambience/windy_mountains",
+    "castle": "ambience/cabin",
+    "cave": "ambience/cabin",
+    "night": "ambience/stormy_night",
+    "day": "ambience/default_ambience",
+    "morning": "ambience/default_ambience",
+    "evening": "ambience/stormy_night"
+}
+
+def find_trigger_words(text: str) -> List[Dict]:
+    """
+    Find trigger words in text and return them with timing information.
+    
+    Args:
+        text: The text to analyze
+        
+    Returns:
+        List of dictionaries with word, sound, and timing information
+    """
+    if not text:
+        return []
+    
+    text_lower = text.lower()
+    trigger_words = []
+    
+    # Calculate estimated reading time (words per minute)
+    words = text.split()
+    estimated_reading_time_minutes = len(words) / 200.0  # 200 words per minute
+    estimated_reading_time_seconds = estimated_reading_time_minutes * 60
+    
+    # Find trigger words in the text
+    for trigger_word, sound_file in TRIGGER_WORDS.items():
+        if trigger_word in text_lower:
+            # Calculate timing based on word position in text
+            word_index = text_lower.find(trigger_word)
+            if word_index != -1:
+                # Estimate timing based on position in text
+                progress_ratio = word_index / len(text)
+                timing = progress_ratio * estimated_reading_time_seconds
+                
+                trigger_words.append({
+                    "word": trigger_word,
+                    "sound": sound_file,
+                    "timing": timing,
+                    "position": word_index
+                })
+    
+    # Sort by timing
+    trigger_words.sort(key=lambda x: x["timing"])
+    
+    return trigger_words 
