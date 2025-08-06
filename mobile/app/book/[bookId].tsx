@@ -67,6 +67,7 @@ export default function BookDetailScreen() {
   const [activeTriggerWords, setActiveTriggerWords] = React.useState<Set<string>>(new Set());
   const [playedWords, setPlayedWords] = React.useState<Set<string>>(new Set());
   const [soundscapeData, setSoundscapeData] = React.useState<any>(null);
+  const [currentCarpetSound, setCurrentCarpetSound] = React.useState<string | null>(null);
 
   const { book, loading } = useBook(bookId as string) as {
     book: any;
@@ -142,14 +143,12 @@ export default function BookDetailScreen() {
           if (!playedWords.has(trigger.id)) {
             setActiveTriggerWords(prev => new Set([...prev, trigger.id]));
 
-            SoundManager.playTrigger(TRIGGER_WORDS[trigger.word]).then((durationMs) => {
-              setTimeout(() => {
-                setActiveTriggerWords(prev => {
-                  const newSet = new Set(prev);
-                  newSet.delete(trigger.id);
-                  return newSet;
-                });
-              }, durationMs);
+            SoundManager.playTrigger(TRIGGER_WORDS[trigger.word]).then(() => {
+              setActiveTriggerWords(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(trigger.id);
+                return newSet;
+              });
             });
 
             setPlayedWords(prev => new Set([...prev, trigger.id]));
@@ -162,13 +161,13 @@ export default function BookDetailScreen() {
     return () => clearInterval(interval);
   }, [isReading, triggerWords, readingStartTime, playedWords]);
 
-  const renderTextWithHighlights = (text: string) => {
+    const renderTextWithHighlights = (text: string) => {
     const words = text.split(/(\s+)/);
     return (
       <Text style={styles.pageText}>
         {words.map((word, index) => {
           const clean = word.toLowerCase().replace(/[^\w]/g, "");
-          const id = `${index}`;
+          const id = `${index}`; // isto kao gore
           const isActive = activeTriggerWords.has(id);
 
           return (
