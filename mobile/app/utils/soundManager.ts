@@ -5,6 +5,26 @@ class SoundManager {
   private static carpetSound: Audio.Sound | null = null;
   private static activeSounds: Set<Audio.Sound> = new Set();
 
+  static async fadeIn(sound: Audio.Sound, duration = 2000) {
+    const steps = 20;
+    const stepTime = duration / steps;
+    for (let i = 0; i <= steps; i++) {
+      await sound.setVolumeAsync(i / steps);
+      await new Promise((res) => setTimeout(res, stepTime));
+    }
+  };
+  
+  static async fadeOut(sound: Audio.Sound, duration = 2000) {
+    const steps = 20;
+    const stepTime = duration / steps;
+    for (let i = steps; i >= 0; i--) {
+      await sound.setVolumeAsync(i / steps);
+      await new Promise((res) => setTimeout(res, stepTime));
+    }
+    await sound.stopAsync();
+    await sound.unloadAsync();
+  };
+
   static async stopAll() {
     try {
       if (this.carpetSound) {
@@ -20,6 +40,9 @@ class SoundManager {
         } catch (e) {}
       }
       this.activeSounds.clear();
+      if (this.carpetSound) {
+        await this.fadeOut(this.carpetSound);
+      }
 
       console.log("✅ All sounds stopped");
     } catch (error) {
@@ -59,6 +82,7 @@ class SoundManager {
     });
 
     this.activeSounds.add(sound);
+    await this.fadeIn(sound);
 
     sound.setOnPlaybackStatusUpdate((status: any) => {
       if (status.didJustFinish) {

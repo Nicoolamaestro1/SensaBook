@@ -66,8 +66,6 @@ export default function BookDetailScreen() {
   const [isReading, setIsReading] = React.useState(false);
   const [activeTriggerWords, setActiveTriggerWords] = React.useState<Set<string>>(new Set());
   const [playedWords, setPlayedWords] = React.useState<Set<string>>(new Set());
-  const [soundscapeData, setSoundscapeData] = React.useState<any>(null);
-  const [currentCarpetSound, setCurrentCarpetSound] = React.useState<string | null>(null);
 
   const { book, loading } = useBook(bookId as string) as {
     book: any;
@@ -161,8 +159,9 @@ export default function BookDetailScreen() {
     return () => clearInterval(interval);
   }, [isReading, triggerWords, readingStartTime, playedWords]);
 
-    const renderTextWithHighlights = (text: string) => {
+  const renderTextWithHighlights = (text: string) => {
     const words = text.split(/(\s+)/);
+    
     return (
       <Text style={styles.pageText}>
         {words.map((word, index) => {
@@ -239,39 +238,33 @@ export default function BookDetailScreen() {
       );
 
       if (!response.ok) {
-        setSoundscapeData(null);
         await SoundManager.stopAll();
         return;
       }
 
       const data = await response.json();
       if (!data) {
-        setSoundscapeData(null);
         await SoundManager.stopAll();
         return;
       }
-
-      setSoundscapeData(data);
-
       if (data.carpet_tracks && data.carpet_tracks.length > 0) {
         const soundFile = data.carpet_tracks[0];
-        const soundAsset = SOUND_MAP[soundFile as keyof typeof SOUND_MAP];
+        const soundAsset = SOUND_MAP[soundFile];
         if (soundAsset) {
           await SoundManager.playCarpet(soundAsset);
         }
       } else {
         await SoundManager.stopAll();
       }
-
       if (currentPage?.content) {
         const foundTriggers = findTriggerWords(currentPage.content);
+        console.log("foundTriggers11111: ", foundTriggers);
         setTriggerWords(foundTriggers);
         if (foundTriggers.length > 0) {
           setTimeout(() => startReadingTimer(), 1000);
         }
       }
     } catch (error) {
-      setSoundscapeData(null);
       await SoundManager.stopAll();
     }
   };
