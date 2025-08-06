@@ -111,26 +111,29 @@ export default function BookDetailScreen() {
     setPlayedWords(new Set());
   };
 
+  
+
   // --- Trigger words detection ---
-  const calculateWordTiming = (
-    text: string,
-    estimatedReadingTimeMinutes: number = 0.5
-  ) => {
+  const calculateWordTiming = (text: string, wpm: number = 180) => {
     const words = text.split(/\s+/).filter((w) => w.length > 0);
-    const totalWords = words.length;
-    const readingTimeMs = estimatedReadingTimeMinutes * 60 * 1000;
-    const msPerWord = readingTimeMs / totalWords;
+    const msPerWord = (60_000 / wpm);
     return { words, msPerWord };
   };
 
   const findTriggerWords = (text: string) => {
     const { words, msPerWord } = calculateWordTiming(text);
-    const found: Array<{ word: string; position: number; timing: number }> = [];
+    const found: Array<{ id: string; word: string; position: number; timing: number }> = [];
+
 
     words.forEach((word, index) => {
       const clean = word.toLowerCase().replace(/[^\w]/g, "");
       if (TRIGGER_WORDS[clean]) {
-        found.push({ word: clean, position: index, timing: index * msPerWord });
+        found.push({
+          id: `${clean}-${index}`, 
+          word: clean,
+          position: index,
+          timing: index * msPerWord,
+        });
       }
     });
     return found;
@@ -139,20 +142,37 @@ export default function BookDetailScreen() {
   // --- Effects ---
   React.useEffect(() => {
     if (!isReading || triggerWords.length === 0) return;
+
     const checkTriggers = () => {
       const currentTime = Date.now() - readingStartTime;
-      triggerWords.forEach((t) => {
-        if (t.timing <= currentTime && t.timing > currentTime - 1000) {
-          if (!playedWords.has(t.word)) {
-            playTriggerSound(t.word);
-            setPlayedWords((prev) => new Set([...prev, t.word]));
+
+      triggerWords.forEach(trigger => {
+        // ako je vreme "za ovu reč"
+        if (
+          trigger.timing <= currentTime && 
+          trigger.timing > currentTime - 500
+        ) {
+         if (!playedWords.has(trigger.id)) {
+            setActiveTriggerWords(prev => new Set([...prev, trigger.id])); // highlight
+
+            SoundManager.playTrigger(TRIGGER_WORDS[trigger.word]).then(() => {
+              setActiveTriggerWords(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(trigger.id);
+                return newSet;
+              });
+            });
+
+            setPlayedWords(prev => new Set([...prev, trigger.id]));
           }
         }
       });
     };
-    const interval = setInterval(checkTriggers, 100);
+
+    const interval = setInterval(checkTriggers, 200); // proverava na svaka 0.2s
     return () => clearInterval(interval);
   }, [isReading, triggerWords, readingStartTime, playedWords]);
+
 
   const playTriggerSound = async (word: string) => {
     const asset = TRIGGER_WORDS[word];
@@ -166,19 +186,19 @@ export default function BookDetailScreen() {
     const words = text.split(/(\s+)/);
     return (
       <Text style={styles.pageText}>
-        {words.map((w, i) => {
-          const clean = w.toLowerCase().replace(/[^\w]/g, "");
-          const isActive = activeTriggerWords.has(clean);
-          if (isActive) {
-            return (
-              <Text key={i} style={styles.highlightedWord}>
-                {w}
-              </Text>
-            );
-          }
-          return w;
+        {words.map((word, index) => {
+          const clean = word.toLowerCase().replace(/[^\w]/g, '');
+          const id = `${clean}-${index}`;
+          const isActive = activeTriggerWords.has(id);
+
+          return (
+            <Text key={index} style={isActive ? styles.highlightedWord : undefined}>
+              {word}
+            </Text>
+          );
         })}
       </Text>
+
     );
   };
 
