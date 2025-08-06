@@ -7,7 +7,6 @@ import SoundManager from "../utils/soundManager";
 
 const { height, width } = Dimensions.get("window");
 
-// -------------- SOUND MAP (local assets) --------------
 import windyMountains from "../sounds/windy_mountains.mp3";
 import defaultAmbience from "../sounds/default_ambience.mp3";
 import tenseDrones from "../sounds/tense_drones.mp3";
@@ -49,32 +48,31 @@ const SOUND_MAP: Record<string, any> = {
   "wind.mp3": windHowl,
 };
 
+interface TriggerWord {
+  id: string;
+  word: string;
+  position: number;
+  timing: number;
+}
+
 export default function BookDetailScreen() {
   const { bookId } = useLocalSearchParams();
   const [currentChapterIndex, setCurrentChapterIndex] = React.useState(0);
   const [currentPageIndex, setCurrentPageIndex] = React.useState(0);
   const [currentChunkIndex, setCurrentChunkIndex] = React.useState(0);
   const [paginatedChunks, setPaginatedChunks] = React.useState<string[]>([]);
-  const [triggerWords, setTriggerWords] = React.useState<
-    Array<{ word: string; position: number; timing: number }>
-  >([]);
+  const [triggerWords, setTriggerWords] = React.useState<TriggerWord[]>([]);
   const [readingStartTime, setReadingStartTime] = React.useState<number>(0);
   const [isReading, setIsReading] = React.useState(false);
-  const [activeTriggerWords, setActiveTriggerWords] = React.useState<
-    Set<string>
-  >(new Set());
+  const [activeTriggerWords, setActiveTriggerWords] = React.useState<Set<string>>(new Set());
   const [playedWords, setPlayedWords] = React.useState<Set<string>>(new Set());
   const [soundscapeData, setSoundscapeData] = React.useState<any>(null);
-  const [currentCarpetSound, setCurrentCarpetSound] = React.useState<
-    string | null
-  >(null);
 
   const { book, loading } = useBook(bookId as string) as {
     book: any;
     loading: boolean;
   };
 
-  // Trigger words map
   const TRIGGER_WORDS: Record<string, any> = {
     thunder: thunderCity,
     footsteps: footstepsApproaching,
@@ -82,7 +80,6 @@ export default function BookDetailScreen() {
     storm: storm,
   };
 
-  // --- Pagination helper ---
   const paginateText = (text: string, fontSize = 16, lineHeight = 24) => {
     const words = text.split(/\s+/);
     const usableHeight = height * 0.9;
@@ -99,7 +96,6 @@ export default function BookDetailScreen() {
     return pages;
   };
 
-  // --- Reading timer ---
   const startReadingTimer = () => {
     setReadingStartTime(Date.now());
     setIsReading(true);
@@ -111,25 +107,21 @@ export default function BookDetailScreen() {
     setPlayedWords(new Set());
   };
 
-  
-
-  // --- Trigger words detection ---
   const calculateWordTiming = (text: string, wpm: number = 180) => {
     const words = text.split(/\s+/).filter((w) => w.length > 0);
-    const msPerWord = (60_000 / wpm);
+    const msPerWord = 60_000 / wpm;
     return { words, msPerWord };
   };
 
   const findTriggerWords = (text: string) => {
     const { words, msPerWord } = calculateWordTiming(text);
-    const found: Array<{ id: string; word: string; position: number; timing: number }> = [];
-
+    const found: TriggerWord[] = [];
 
     words.forEach((word, index) => {
       const clean = word.toLowerCase().replace(/[^\w]/g, "");
       if (TRIGGER_WORDS[clean]) {
         found.push({
-          id: `${clean}-${index}`, 
+          id: `${index}`,
           word: clean,
           position: index,
           timing: index * msPerWord,
@@ -139,28 +131,25 @@ export default function BookDetailScreen() {
     return found;
   };
 
-  // --- Effects ---
   React.useEffect(() => {
     if (!isReading || triggerWords.length === 0) return;
 
     const checkTriggers = () => {
       const currentTime = Date.now() - readingStartTime;
 
-      triggerWords.forEach(trigger => {
-        // ako je vreme "za ovu reč"
-        if (
-          trigger.timing <= currentTime && 
-          trigger.timing > currentTime - 500
-        ) {
-         if (!playedWords.has(trigger.id)) {
-            setActiveTriggerWords(prev => new Set([...prev, trigger.id])); // highlight
+      triggerWords.forEach((trigger) => {
+        if (trigger.timing <= currentTime && trigger.timing > currentTime - 500) {
+          if (!playedWords.has(trigger.id)) {
+            setActiveTriggerWords(prev => new Set([...prev, trigger.id]));
 
-            SoundManager.playTrigger(TRIGGER_WORDS[trigger.word]).then(() => {
-              setActiveTriggerWords(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(trigger.id);
-                return newSet;
-              });
+            SoundManager.playTrigger(TRIGGER_WORDS[trigger.word]).then((durationMs) => {
+              setTimeout(() => {
+                setActiveTriggerWords(prev => {
+                  const newSet = new Set(prev);
+                  newSet.delete(trigger.id);
+                  return newSet;
+                });
+              }, durationMs);
             });
 
             setPlayedWords(prev => new Set([...prev, trigger.id]));
@@ -169,26 +158,17 @@ export default function BookDetailScreen() {
       });
     };
 
-    const interval = setInterval(checkTriggers, 200); // proverava na svaka 0.2s
+    const interval = setInterval(checkTriggers, 200);
     return () => clearInterval(interval);
   }, [isReading, triggerWords, readingStartTime, playedWords]);
-
-
-  const playTriggerSound = async (word: string) => {
-    const asset = TRIGGER_WORDS[word];
-    if (asset) {
-      setActiveTriggerWords((prev) => new Set([...prev, word]));
-      await SoundManager.playTrigger(asset);
-    }
-  };
 
   const renderTextWithHighlights = (text: string) => {
     const words = text.split(/(\s+)/);
     return (
       <Text style={styles.pageText}>
         {words.map((word, index) => {
-          const clean = word.toLowerCase().replace(/[^\w]/g, '');
-          const id = `${clean}-${index}`;
+          const clean = word.toLowerCase().replace(/[^\w]/g, "");
+          const id = `${index}`;
           const isActive = activeTriggerWords.has(id);
 
           return (
@@ -198,11 +178,9 @@ export default function BookDetailScreen() {
           );
         })}
       </Text>
-
     );
   };
 
-  // --- Navigation ---
   const currentChapter = book?.chapters?.[currentChapterIndex];
   const currentPage = currentChapter?.pages?.[currentPageIndex];
   const totalChapters = book?.chapters?.length || 0;
@@ -216,10 +194,9 @@ export default function BookDetailScreen() {
   const currentPageInBook =
     book?.chapters
       ?.slice(0, currentChapterIndex)
-      .reduce(
-        (total: number, chapter: any) => total + chapter.pages.length,
-        0
-      ) + currentPageIndex + 1 || 0;
+      .reduce((total: number, chapter: any) => total + chapter.pages.length, 0) +
+      currentPageIndex +
+      1 || 0;
   const readingProgress =
     totalPagesInBook > 0 ? currentPageInBook / totalPagesInBook : 0;
 
@@ -251,63 +228,54 @@ export default function BookDetailScreen() {
     }
   };
 
- // Load soundscape for current page
-const loadSoundscapeForPage = async (chapterIndex?: number, pageIndex?: number) => {
-  try {
-    const targetChapterIndex = chapterIndex ?? currentChapterIndex;
-    const targetPageIndex = pageIndex ?? currentPageIndex;
+  const loadSoundscapeForPage = async (chapterIndex?: number, pageIndex?: number) => {
+    try {
+      const targetChapterIndex = chapterIndex ?? currentChapterIndex;
+      const targetPageIndex = pageIndex ?? currentPageIndex;
 
-    console.log("Loading soundscape for page...", { targetChapterIndex, targetPageIndex });
-    stopReadingTimer();
+      stopReadingTimer();
 
-    const response = await fetch(
-      `http://localhost:8000/soundscape/book/${bookId}/chapter${targetChapterIndex + 1}/page/${targetPageIndex + 1}`
-    );
+      const response = await fetch(
+        `http://localhost:8000/soundscape/book/${bookId}/chapter${targetChapterIndex + 1}/page/${targetPageIndex + 1}`
+      );
 
-    // ako backend vrati prazan odgovor
-    if (!response.ok) {
-      console.log("No soundscape data found for this page");
-      setSoundscapeData(null);
-      await SoundManager.stopAll(); // nema carpet -> zaustavi sve
-      return;
-    }
+      if (!response.ok) {
+        setSoundscapeData(null);
+        await SoundManager.stopAll();
+        return;
+      }
 
-    const data = await response.json();
-    if (!data) {
-      console.log("Soundscape data is null");
+      const data = await response.json();
+      if (!data) {
+        setSoundscapeData(null);
+        await SoundManager.stopAll();
+        return;
+      }
+
+      setSoundscapeData(data);
+
+      if (data.carpet_tracks && data.carpet_tracks.length > 0) {
+        const soundFile = data.carpet_tracks[0];
+        const soundAsset = SOUND_MAP[soundFile as keyof typeof SOUND_MAP];
+        if (soundAsset) {
+          await SoundManager.playCarpet(soundAsset);
+        }
+      } else {
+        await SoundManager.stopAll();
+      }
+
+      if (currentPage?.content) {
+        const foundTriggers = findTriggerWords(currentPage.content);
+        setTriggerWords(foundTriggers);
+        if (foundTriggers.length > 0) {
+          setTimeout(() => startReadingTimer(), 1000);
+        }
+      }
+    } catch (error) {
       setSoundscapeData(null);
       await SoundManager.stopAll();
-      return;
     }
-
-    setSoundscapeData(data);
-
-    // Carpet sound
-    if (data.carpet_tracks && data.carpet_tracks.length > 0) {
-      const soundFile = data.carpet_tracks[0];
-      const soundAsset = SOUND_MAP[soundFile as keyof typeof SOUND_MAP];
-      if (soundAsset) {
-        await SoundManager.playCarpet(soundAsset);
-      }
-    } else {
-      console.log("No carpet tracks in this page");
-      await SoundManager.stopAll();
-    }
-
-    // Trigger words
-    if (currentPage?.content) {
-      const foundTriggers = findTriggerWords(currentPage.content);
-      setTriggerWords(foundTriggers);
-      if (foundTriggers.length > 0) {
-        setTimeout(() => startReadingTimer(), 1000);
-      }
-    }
-  } catch (error) {
-    console.log("Error loading soundscape:", error);
-    setSoundscapeData(null);
-    await SoundManager.stopAll();
-  }
-};
+  };
 
   React.useEffect(() => {
     if (book && currentPage) {
@@ -318,11 +286,9 @@ const loadSoundscapeForPage = async (chapterIndex?: number, pageIndex?: number) 
     }
   }, [book, currentChapterIndex, currentPageIndex]);
 
-  // --- Cleanup ---
   useFocusEffect(
     React.useCallback(() => {
       return () => {
-        console.log("Leaving BookDetailScreen, stop sounds");
         SoundManager.stopAll();
       };
     }, [])
@@ -343,7 +309,6 @@ const loadSoundscapeForPage = async (chapterIndex?: number, pageIndex?: number) 
     };
   }, []);
 
-  // --- UI ---
   if (loading) {
     return (
       <View style={styles.center}>
@@ -404,8 +369,7 @@ const loadSoundscapeForPage = async (chapterIndex?: number, pageIndex?: number) 
 
         <View style={styles.pageInfo}>
           <Text style={styles.pageInfoText}>
-            {currentChapterIndex + 1}/{totalChapters} • {currentPageIndex + 1}/
-            {totalPages}
+            {currentChapterIndex + 1}/{totalChapters} • {currentPageIndex + 1}/{totalPages}
           </Text>
         </View>
       </View>

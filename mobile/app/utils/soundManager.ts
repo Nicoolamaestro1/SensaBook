@@ -5,7 +5,6 @@ class SoundManager {
   private static carpetSound: Audio.Sound | null = null;
   private static activeSounds: Set<Audio.Sound> = new Set();
 
-  // Zaustavi sve zvuke (carpet + trigger)
   static async stopAll() {
     try {
       if (this.carpetSound) {
@@ -28,9 +27,8 @@ class SoundManager {
     }
   }
 
-  // Pusti carpet (uvek samo jedan)
   static async playCarpet(asset: any) {
-    await this.stopCarpet(); // prvo ugasi stari
+    await this.stopCarpet();
 
     const { sound } = await Audio.Sound.createAsync(asset, {
       shouldPlay: true,
@@ -53,7 +51,6 @@ class SoundManager {
     }
   }
 
-  // Pusti trigger zvuk (može više njih paralelno)
   static async playTrigger(asset: any) {
     const { sound } = await Audio.Sound.createAsync(asset, {
       shouldPlay: true,
