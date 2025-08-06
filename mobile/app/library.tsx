@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import { Audio } from 'expo-av';
 import { useBooks } from '../hooks/useBooks';
+import SoundManager from "./utils/soundManager";
 
 const { width } = Dimensions.get("window");
 
@@ -13,20 +14,11 @@ export default function LibraryScreen() {
 
   const [searchQuery, setSearchQuery] = React.useState("");
 
-  // Stop all sounds when library page comes into focus
   useFocusEffect(
-    React.useCallback(() => {
-      const stopAllSounds = async () => {
-        try {
-          await Audio.setIsEnabledAsync(false);
-          await Audio.setIsEnabledAsync(true);
-        } catch (error) {
-          console.log("Error stopping sounds:", error);
-        }
-      };
-      stopAllSounds();
-    }, [])
-  );
+  React.useCallback(() => {
+    SoundManager.stopAll(); // force stop svih zvukova kad udjes u Library
+  }, [])
+);
 
   // Filter books
   const filteredBooks = books.filter((book) =>
