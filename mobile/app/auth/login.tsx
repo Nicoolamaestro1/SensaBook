@@ -41,11 +41,12 @@ export default function LoginScreen() {
       <TextInput
         style={styles.input}
         placeholder="Email"
-        placeholderTextColor="#aaa"
         value={email}
+        placeholderTextColor="#aaa"
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
+        
       />
 
       <TextInput
@@ -95,21 +96,23 @@ const styles = StyleSheet.create({
     maxWidth: 340,
     height: 50,
     borderWidth: 1,
-    borderColor: "#B4B4B4",
-    borderRadius: 50,
+    borderColor: "#fff",
+    borderRadius: 8,
     paddingHorizontal: 16,
     fontSize: 16,
     marginBottom: 16,
-    color: "#EAEAEA",
-    backgroundColor: "transparent",
+    backgroundColor: "#fff",
+    color: "#0A0414",
+    fontFamily: "Montserrat_400Regular",
   },
+ 
   button: {
     width: "100%",
     maxWidth: 340,
     backgroundColor: "transparent",
     paddingVertical: 14,
     borderWidth: 1,
-    borderColor: "#B4B4B4",
+    borderColor: "#fff",
     borderRadius: 50,
     marginTop: 8,
     marginBottom: 16,
@@ -119,9 +122,12 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+    fontFamily: "Montserrat_700Bold",
   },
   forgotPassword: {
     color: "#ddd",
     fontSize: 14,
+    fontFamily: "Montserrat_400Regular",
+
   },
 });

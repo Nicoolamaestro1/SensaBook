@@ -4,7 +4,9 @@ import { ImageBackground, ActivityIndicator, View } from "react-native";
 import { ThemeProvider, DefaultTheme } from "@react-navigation/native";
 import {
   useFonts,
+  Montserrat_300Light,
   Montserrat_400Regular,
+  Montserrat_500Medium,
   Montserrat_700Bold,
 } from "@expo-google-fonts/montserrat";
 
@@ -18,7 +20,9 @@ const CustomTheme = {
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
+    Montserrat_300Light,
     Montserrat_400Regular,
+    Montserrat_500Medium,
     Montserrat_700Bold,
   });
 
