@@ -1,4 +1,3 @@
-// app/utils/soundManager.ts
 import { Audio } from "expo-av";
 
 class SoundManager {
@@ -6,20 +5,23 @@ class SoundManager {
   private static activeSounds: Set<Audio.Sound> = new Set();
   private static isCarpetLoading: boolean = false;
 
-  static async fadeIn(sound: Audio.Sound, duration = 2000) {
+  static async fadeIn(sound: Audio.Sound, duration = 2000, targetVolume = 0.5) {
     const steps = 20;
     const stepTime = duration / steps;
     for (let i = 0; i <= steps; i++) {
-      await sound.setVolumeAsync(i / steps);
+      await sound.setVolumeAsync((i / steps) * targetVolume);
       await new Promise((res) => setTimeout(res, stepTime));
     }
   }
 
   static async fadeOut(sound: Audio.Sound, duration = 2000) {
+    const status = await sound.getStatusAsync();
+    if (!status.isLoaded) return;
+    const initialVolume = status.volume ?? 1.0;
     const steps = 20;
     const stepTime = duration / steps;
     for (let i = steps; i >= 0; i--) {
-      await sound.setVolumeAsync(i / steps);
+      await sound.setVolumeAsync((i / steps) * initialVolume);
       await new Promise((res) => setTimeout(res, stepTime));
     }
     await sound.stopAsync();
@@ -27,9 +29,7 @@ class SoundManager {
   }
 
   static async stopAll() {
-    // Stop carpet
     await this.stopCarpet();
-    // Stop all triggers
     for (const sound of this.activeSounds) {
       try {
         await sound.stopAsync();
@@ -40,58 +40,45 @@ class SoundManager {
     console.log("✅ All sounds stopped");
   }
 
-  /**
-   * Play looping ambient sound. Stops previous carpet if exists.
-   * Ignores rapid repeated calls using a loading lock.
-   */
   static async playCarpet(asset: any) {
-    if (this.isCarpetLoading) return; // ignore rapid repeated calls
+    if (this.isCarpetLoading) return;
     this.isCarpetLoading = true;
     await this.stopCarpet();
 
     try {
-      if (this.carpetSound) {
-        await this.carpetSound.stopAsync();
-        await this.carpetSound.unloadAsync();
-        this.carpetSound = null;
-      }
+      const { sound } = await Audio.Sound.createAsync(asset, {
+        shouldPlay: false,
+        isLooping: true,
+        volume: 0.0,
+      });
+      this.carpetSound = sound;
 
-      for (const sound of this.activeSounds) {
-        try {
-          await sound.stopAsync();
-          await sound.unloadAsync();
-        } catch (e) {}
-      }
-      this.activeSounds.clear();
-      if (this.carpetSound) {
-        await this.fadeOut(this.carpetSound);
-      }
-
-      console.log("✅ All sounds stopped");
-    } catch (error) {
-      console.log("Error stopping sounds:", error);
+      await sound.playAsync();
+      await this.fadeIn(sound, 1500, 0.5); // fade to 0.5 in 1.5s
+      console.log("🎵 Carpet sound started (with fade in)");
+    } catch (e) {
+      console.log("Carpet play error:", e);
+    } finally {
+      this.isCarpetLoading = false;
     }
   }
 
-  /**
-   * Stops only the carpet (ambient) sound.
-   */
   static async stopCarpet() {
     if (this.carpetSound) {
       try {
-        await this.carpetSound.stopAsync();
-        await this.carpetSound.unloadAsync();
-        console.log("🛑 Carpet sound stopped");
+        await this.fadeOut(this.carpetSound, 1200);
+        console.log("🛑 Carpet sound stopped (with fade out)");
       } catch (e) {
-        console.log("Carpet stop error:", e);
+        // fallback: force stop/unload
+        try {
+          await this.carpetSound.stopAsync();
+          await this.carpetSound.unloadAsync();
+        } catch {}
       }
       this.carpetSound = null;
     }
   }
 
-  /**
-   * Play one-shot trigger sound (does not loop).
-   */
   static async playTrigger(asset: any) {
     try {
       const { sound } = await Audio.Sound.createAsync(asset, {
@@ -101,7 +88,7 @@ class SoundManager {
       });
 
       this.activeSounds.add(sound);
-      await this.fadeIn(sound);
+      await this.fadeIn(sound, 400, 0.8);
 
       sound.setOnPlaybackStatusUpdate((status: any) => {
         if (status.didJustFinish) {
