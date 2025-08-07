@@ -67,6 +67,12 @@ export default function BookDetailScreen() {
   const [activeTriggerWords, setActiveTriggerWords] = React.useState<Set<string>>(new Set());
   const [playedWords, setPlayedWords] = React.useState<Set<string>>(new Set());
 
+  const [activeWordIndex, setActiveWordIndex] = React.useState<number | null>(null);
+  const [soundscapeData, setSoundscapeData] = React.useState<any>(null);
+
+  const wordIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+
+
   const { book, loading } = useBook(bookId as string) as {
     book: any;
     loading: boolean;
@@ -80,7 +86,7 @@ export default function BookDetailScreen() {
   };
 
   const paginateText = (text: string, fontSize = 16, lineHeight = 24) => {
-    const words = text.split(/\s+/);
+    const words = text.split(/\s+/).filter(Boolean);
     const usableHeight = height * 0.9;
     const linesPerPage = Math.floor(usableHeight / lineHeight);
     const avgCharsPerWord = 6;
@@ -95,19 +101,9 @@ export default function BookDetailScreen() {
     return pages;
   };
 
-  const startReadingTimer = () => {
-    setReadingStartTime(Date.now());
-    setIsReading(true);
-    setPlayedWords(new Set());
-  };
-
-  const stopReadingTimer = () => {
-    setIsReading(false);
-    setPlayedWords(new Set());
-  };
-
-  const calculateWordTiming = (text: string, wpm: number = 180) => {
-    const words = text.split(/\s+/).filter((w) => w.length > 0);
+  const calculateWordTiming = (text: string, wpm: number = 120) => {
+    if (!text) return { words: [], msPerWord: 333 };
+    const words = text.split(/\s+/).filter(Boolean);
     const msPerWord = 60_000 / wpm;
     return { words, msPerWord };
   };
@@ -130,55 +126,62 @@ export default function BookDetailScreen() {
     return found;
   };
 
-  React.useEffect(() => {
-    if (!isReading || triggerWords.length === 0) return;
+  const stopReadingTimer = React.useCallback(() => {
+    setIsReading(false);
+    setPlayedWords(new Set());
+    setActiveTriggerWords(new Set());
+    setActiveWordIndex(null);
+    if (wordIntervalRef.current) {
+      clearInterval(wordIntervalRef.current);
+      wordIntervalRef.current = null;
+    }
+  }, []);
 
-    const checkTriggers = () => {
-      const currentTime = Date.now() - readingStartTime;
+  const startReadingTimer = React.useCallback(() => {
+    stopReadingTimer();
+    setReadingStartTime(Date.now());
+    setIsReading(true);
+    setPlayedWords(new Set());
+    setActiveTriggerWords(new Set());
+    setActiveWordIndex(0);
 
-      triggerWords.forEach((trigger) => {
-        if (trigger.timing <= currentTime && trigger.timing > currentTime - 500) {
-          if (!playedWords.has(trigger.id)) {
-            setActiveTriggerWords(prev => new Set([...prev, trigger.id]));
+    const chunk = paginatedChunks[currentChunkIndex] || "";
+    const { words, msPerWord } = calculateWordTiming(chunk);
 
-            SoundManager.playTrigger(TRIGGER_WORDS[trigger.word]).then(() => {
-              setActiveTriggerWords(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(trigger.id);
-                return newSet;
-              });
+    let idx = 0;
+    wordIntervalRef.current = setInterval(() => {
+      setActiveWordIndex((prev) => {
+        const currentIdx = prev === null ? 0 : prev + 1;
+
+        // PROVERI DA LI JE TRIGGER
+        const trigger = triggerWords.find(t => t.position === currentIdx);
+        if (trigger && !activeTriggerWords.has(trigger.id)) {
+          setActiveTriggerWords(prevSet => {
+            const newSet = new Set(prevSet);
+            newSet.add(trigger.id);
+            return newSet;
+          });
+          SoundManager.playTrigger(TRIGGER_WORDS[trigger.word]).then(() => {
+            setActiveTriggerWords(prevSet => {
+              const newSet = new Set(prevSet);
+              newSet.delete(trigger.id);
+              return newSet;
             });
-
-            setPlayedWords(prev => new Set([...prev, trigger.id]));
-          }
+          });
         }
+
+        if (currentIdx >= words.length) {
+          stopReadingTimer();
+          return null;
+        }
+        return currentIdx;
       });
-    };
+      idx++;
+    }, msPerWord);
+  // eslint-disable-next-line
+  }, [paginatedChunks, currentChunkIndex, triggerWords, activeTriggerWords, stopReadingTimer]);
 
-    const interval = setInterval(checkTriggers, 200);
-    return () => clearInterval(interval);
-  }, [isReading, triggerWords, readingStartTime, playedWords]);
-
-  const renderTextWithHighlights = (text: string) => {
-    const words = text.split(/(\s+)/);
-    
-    return (
-      <Text style={styles.pageText}>
-        {words.map((word, index) => {
-          const clean = word.toLowerCase().replace(/[^\w]/g, "");
-          const id = `${index}`; // isto kao gore
-          const isActive = activeTriggerWords.has(id);
-
-          return (
-            <Text key={index} style={isActive ? styles.highlightedWord : undefined}>
-              {word}
-            </Text>
-          );
-        })}
-      </Text>
-    );
-  };
-
+  // --- Main page navigation ---
   const currentChapter = book?.chapters?.[currentChapterIndex];
   const currentPage = currentChapter?.pages?.[currentPageIndex];
   const totalChapters = book?.chapters?.length || 0;
@@ -199,6 +202,7 @@ export default function BookDetailScreen() {
     totalPagesInBook > 0 ? currentPageInBook / totalPagesInBook : 0;
 
   const goToNextPage = () => {
+    stopReadingTimer();
     if (currentChunkIndex < paginatedChunks.length - 1) {
       setCurrentChunkIndex(currentChunkIndex + 1);
       return;
@@ -212,6 +216,7 @@ export default function BookDetailScreen() {
   };
 
   const goToPreviousPage = () => {
+    stopReadingTimer();
     if (currentChunkIndex > 0) {
       setCurrentChunkIndex(currentChunkIndex - 1);
       return;
@@ -230,8 +235,7 @@ export default function BookDetailScreen() {
     try {
       const targetChapterIndex = chapterIndex ?? currentChapterIndex;
       const targetPageIndex = pageIndex ?? currentPageIndex;
-
-      stopReadingTimer();
+      await SoundManager.stopAll();
 
       const response = await fetch(
         `http://localhost:8000/soundscape/book/${bookId}/chapter${targetChapterIndex + 1}/page/${targetPageIndex + 1}`
@@ -256,50 +260,90 @@ export default function BookDetailScreen() {
       } else {
         await SoundManager.stopAll();
       }
-      if (currentPage?.content) {
-        const foundTriggers = findTriggerWords(currentPage.content);
-        console.log("foundTriggers11111: ", foundTriggers);
-        setTriggerWords(foundTriggers);
-        if (foundTriggers.length > 0) {
-          setTimeout(() => startReadingTimer(), 1000);
-        }
-      }
+
     } catch (error) {
       await SoundManager.stopAll();
     }
   };
 
+  // Prvo postavi paginatedChunks i resetuj chunk index na 0 kad menjaš stranu
   React.useEffect(() => {
     if (book && currentPage) {
-      loadSoundscapeForPage(currentChapterIndex, currentPageIndex);
       const chunks = paginateText(currentPage.content);
       setPaginatedChunks(chunks);
       setCurrentChunkIndex(0);
     }
+    // eslint-disable-next-line
   }, [book, currentChapterIndex, currentPageIndex]);
+
+  // Kad menjaš paginatedChunks ili chunkIndex, pronađi trigger reči i soundscape, i pokreni čitanje kad je sve spremno
+  React.useEffect(() => {
+    if (paginatedChunks.length > 0) {
+      const chunk = paginatedChunks[currentChunkIndex];
+      setTriggerWords(findTriggerWords(chunk));
+      loadSoundscapeForPage(currentChapterIndex, currentPageIndex);
+    }
+    // eslint-disable-next-line
+  }, [paginatedChunks, currentChunkIndex]);
+
+  // Kad se triggerWords promene, pokreni timer za čitanje
+  React.useEffect(() => {
+    if (paginatedChunks.length > 0 && triggerWords) {
+      startReadingTimer();
+    }
+    // eslint-disable-next-line
+  }, [triggerWords]);
 
   useFocusEffect(
     React.useCallback(() => {
       return () => {
         SoundManager.stopAll();
+        stopReadingTimer();
       };
-    }, [])
+    }, [stopReadingTimer])
   );
 
   React.useEffect(() => {
     const sub = AppState.addEventListener("change", (s) => {
       if (s === "background" || s === "inactive") {
         SoundManager.stopAll();
+        stopReadingTimer();
       }
     });
     return () => sub.remove();
-  }, []);
+  }, [stopReadingTimer]);
 
   React.useEffect(() => {
     return () => {
       SoundManager.stopAll();
+      stopReadingTimer();
     };
-  }, []);
+  }, [stopReadingTimer]);
+
+  // --- Render words with highlights ---
+  const renderTextWithHighlights = (text: string) => {
+    const words = text.split(/\s+/).filter(Boolean);
+    return (
+      <Text style={styles.pageText}>
+        {words.map((word, index) => {
+          const clean = word.toLowerCase().replace(/[^\w]/g, "");
+          const trigger = triggerWords.find(t => t.position === index);
+          const isActiveTrigger = activeTriggerWords.has(`${index}`);
+          const isActiveReading = activeWordIndex === index;
+
+          let style = undefined;
+          if (isActiveTrigger) style = styles.triggerHighlight;
+          else if (isActiveReading) style = styles.wordBorderHighlight;
+
+          return (
+            <Text key={index} style={style}>
+              {word}{index !== words.length - 1 ? " " : ""}
+            </Text>
+          );
+        })}
+      </Text>
+    );
+  };
 
   if (loading) {
     return (
@@ -403,13 +447,22 @@ const styles = StyleSheet.create({
     color: "#5b4636",
     lineHeight: 24,
     textAlign: "justify",
+    flexWrap: "wrap",
+    flexDirection: "row",
   } as any,
   pageInfo: { alignItems: "center", marginVertical: 12 },
   pageInfoText: { color: "#ccc", fontSize: 14, fontWeight: "500" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  highlightedWord: {
+  triggerHighlight: {
     backgroundColor: "#ff6b6b",
+    color: "#fff",
     padding: 2,
     borderRadius: 4,
+  },
+  wordBorderHighlight: {
+    borderColor: "#5b4636",
+    borderWidth: 1,
+    borderRadius: 4,
+    padding: 2,
   },
 });
