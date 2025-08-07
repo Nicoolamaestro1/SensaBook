@@ -279,7 +279,6 @@ export default function BookDetailScreen() {
       } else {
         await SoundManager.stopAll();
       }
-
     } catch (error) {
       await SoundManager.stopAll();
     }

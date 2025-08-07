@@ -79,6 +79,9 @@ class SoundManager {
     }
   }
 
+  /**
+   * Play one-shot trigger sound (does not loop).
+   */
   static async playTrigger(asset: any) {
     try {
       const { sound } = await Audio.Sound.createAsync(asset, {
