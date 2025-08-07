@@ -293,102 +293,345 @@ class AdvancedEmotionAnalyzer:
 # Global analyzer instance
 emotion_analyzer = AdvancedEmotionAnalyzer()
 
-# Trigger words mapping for sound effects
-TRIGGER_WORDS = {
-    # Weather and atmospheric
-    "wind": "triggers/wind",
-    "thunder": "ambience/thunder-city-377703",
-    "rain": "ambience/cabin_rain",
-    "storm": "triggers/storm",
-    "lightning": "ambience/thunder-city-377703",
-    "snow": "triggers/wind",
-    "fog": "ambience/atmosphere-sound-effect-239969",
-    "breeze": "triggers/wind",
+# COMPREHENSIVE REGEX-BASED TRIGGER SYSTEM
+TRIGGER_PATTERNS = {
+    # WEATHER & ATMOSPHERIC SOUNDS
+    "wind_sounds": {
+        "patterns": [
+            r"\b(wind|breeze|gust|gale|zephyr|blast|whirlwind|cyclone|hurricane|typhoon)\b",
+            r"\b(wind|breeze)\s+(howling|whistling|whispering|moaning|sighing|rustling|swirling|roaring|screaming|wailing)\b",
+            r"\b(howling|whistling|whispering|moaning|sighing|rustling|swirling|roaring|screaming|wailing)\s+(wind|breeze)\b",
+            r"\b(leaves?|trees?|branches?)\s+(rustling|swaying|dancing|trembling|quivering|shaking)\b",
+            r"\b(rustling|swaying|dancing|trembling|quivering|shaking)\s+(leaves?|trees?|branches?)\b"
+        ],
+        "sound_folder": "triggers/wind",
+        "priority": 1
+    },
     
-    # Fire and heat
-    "fire": "triggers/storm",
-    "flame": "triggers/storm",
-    "burning": "triggers/storm",
-    "smoke": "ambience/atmosphere-sound-effect-239969",
+    "thunder_lightning": {
+        "patterns": [
+            r"\b(thunder|lightning|bolt|flash|strike|crack|boom|rumble|roll|crash)\b",
+            r"\b(thunder|lightning)\s+(cracking|rolling|rumbling|booming|crashing|striking|flashing|roaring)\b",
+            r"\b(cracking|rolling|rumbling|booming|crashing|striking|flashing|roaring)\s+(thunder|lightning)\b",
+            r"\b(distant|close|nearby|far)\s+(thunder|lightning)\b"
+        ],
+        "sound_folder": "triggers/thunder",
+        "priority": 1
+    },
     
-    # Water and liquid
-    "water": "ambience/cabin_rain",
-    "river": "ambience/cabin_rain",
-    "stream": "ambience/cabin_rain",
-    "ocean": "ambience/cabin_rain",
-    "splash": "ambience/cabin_rain",
-    "drip": "ambience/cabin_rain",
+    "rain_water": {
+        "patterns": [
+            r"\b(rain|drizzle|shower|downpour|deluge|sprinkle|mist|drops?)\b",
+            r"\b(rain|water)\s+(pattering|drumming|pouring|falling|dripping|splashing|flowing|rushing)\b",
+            r"\b(pattering|drumming|pouring|falling|dripping|splashing|flowing|rushing)\s+(rain|water)\b",
+            r"\b(river|stream|brook|creek|waterfall|cascade|rapids|waves?|ocean|sea|lake|pond)\b",
+            r"\b(water|river|stream)\s+(flowing|rushing|babbling|gurgling|splashing|crashing|roaring)\b",
+            r"\b(flowing|rushing|babbling|gurgling|splashing|crashing|roaring)\s+(water|river|stream)\b",
+            r"\b(dripping|splashing|splatter|splash|drip|drop)\s+(water|rain)\b"
+        ],
+        "sound_folder": "triggers/water",
+        "priority": 1
+    },
     
-    # Movement and footsteps
-    "footsteps": "triggers/footsteps-approaching-316715",
-    "walking": "triggers/footsteps-approaching-316715",
-    "running": "triggers/footsteps-approaching-316715",
-    "horse": "triggers/footsteps-approaching-316715",
-    "carriage": "triggers/footsteps-approaching-316715",
-    "wheels": "triggers/footsteps-approaching-316715",
+    "storm_weather": {
+        "patterns": [
+            r"\b(storm|tempest|squall|blizzard|hail|sleet|cyclone|hurricane|typhoon)\b",
+            r"\b(raging|fierce|violent|wild|terrifying|howling|roaring)\s+(storm|tempest)\b",
+            r"\b(storm|tempest)\s+(raging|fierce|violent|wild|terrifying|howling|roaring)\b"
+        ],
+        "sound_folder": "triggers/storm",
+        "priority": 1
+    },
     
-    # Combat and weapons
-    "sword": "ambience/tense_drones",
-    "battle": "ambience/tense_drones",
-    "fight": "ambience/tense_drones",
-    "war": "ambience/tense_drones",
-    "arrow": "ambience/tense_drones",
-    "shield": "ambience/tense_drones",
-    "armor": "ambience/tense_drones",
-    "chains": "ambience/tense_drones",
+    # FIRE & HEAT SOUNDS
+    "fire_sounds": {
+        "patterns": [
+            r"\b(fire|flame|blaze|inferno|bonfire|hearth|embers?|ashes?|sparks?)\b",
+            r"\b(fire|flame|embers?)\s+(crackling|roaring|burning|flickering|dancing|leaping|devouring)\b",
+            r"\b(crackling|roaring|burning|flickering|dancing|leaping|devouring)\s+(fire|flame|embers?)\b",
+            r"\b(wood|log|branch|twig)\s+(burning|crackling|popping|snapping)\b",
+            r"\b(burning|crackling|popping|snapping)\s+(wood|log|branch|twig)\b",
+            r"\b(smoke|smoldering|smoldering)\s+(rising|curling|billowing|drifting)\b"
+        ],
+        "sound_folder": "triggers/fire",
+        "priority": 1
+    },
     
-    # Magic and supernatural
-    "magic": "ambience/atmosphere-sound-effect-239969",
-    "spell": "ambience/atmosphere-sound-effect-239969",
-    "wizard": "ambience/atmosphere-sound-effect-239969",
-    "dragon": "triggers/storm",
-    "ghost": "ambience/atmosphere-sound-effect-239969",
-    "spirit": "ambience/atmosphere-sound-effect-239969",
+    # FOOTSTEPS & MOVEMENT
+    "footsteps": {
+        "patterns": [
+            r"\b(footsteps?|footfall|tread|step|stomp|tramp|march|stride|pace)\b",
+            r"\b(heavy|light|soft|loud|distant|approaching|retreating|echoing)\s+(footsteps?|footfall)\b",
+            r"\b(footsteps?|footfall)\s+(heavy|light|soft|loud|distant|approaching|retreating|echoing)\b",
+            r"\b(boots?|shoes?|slippers?|sandals?)\s+(on|against|against)\s+(stone|wood|metal|cobblestone|gravel|dirt)\b",
+            r"\b(walking|running|marching|striding|pacing|tramping|stomping)\b",
+            r"\b(creaking|squeaking|groaning)\s+(floorboards?|stairs?|steps?)\b"
+        ],
+        "sound_folder": "triggers/footsteps",
+        "priority": 2
+    },
     
-    # Animals and creatures
-    "bird": "ambience/atmosphere-sound-effect-239969",
-    "owl": "ambience/atmosphere-sound-effect-239969",
-    "wolf": "triggers/storm",
-    "horse": "triggers/footsteps-approaching-316715",
-    "dog": "triggers/footsteps-approaching-316715",
-    "cat": "ambience/atmosphere-sound-effect-239969",
+    "horse_movement": {
+        "patterns": [
+            r"\b(horse|mare|stallion|pony|steed|mount)\b",
+            r"\b(hooves?|hoofbeats?)\s+(on|against|against)\s+(cobblestone|stone|dirt|grass|road)\b",
+            r"\b(horse|mare|stallion)\s+(galloping|trotting|cantering|walking|running|charging)\b",
+            r"\b(galloping|trotting|cantering|walking|running|charging)\s+(horse|mare|stallion)\b",
+            r"\b(neighing|whinnying|snorting|breathing)\s+(horse|mare|stallion)\b"
+        ],
+        "sound_folder": "triggers/horse",
+        "priority": 2
+    },
     
-    # Human sounds
-    "scream": "ambience/tense_drones",
-    "whisper": "ambience/atmosphere-sound-effect-239969",
-    "laugh": "ambience/default_ambience",
-    "cry": "ambience/tense_drones",
-    "heartbeat": "ambience/tense_drones",
-    "breath": "ambience/atmosphere-sound-effect-239969",
+    "carriage_wheels": {
+        "patterns": [
+            r"\b(carriage|wagon|cart|coach|chariot|buggy)\b",
+            r"\b(wheels?|axles?)\s+(turning|rolling|creaking|squeaking|rumbling)\b",
+            r"\b(turning|rolling|creaking|squeaking|rumbling)\s+(wheels?|axles?)\b",
+            r"\b(carriage|wagon|cart)\s+(rolling|rumbling|creaking|approaching|passing)\b"
+        ],
+        "sound_folder": "triggers/carriage",
+        "priority": 2
+    },
     
-    # Mechanical and objects
-    "door": "triggers/footsteps-approaching-316715",
-    "creak": "triggers/footsteps-approaching-316715",
-    "bell": "ambience/atmosphere-sound-effect-239969",
-    "book": "ambience/default_ambience",
-    "page": "ambience/default_ambience",
-    "clock": "ambience/atmosphere-sound-effect-239969",
+    # COMBAT & WEAPONS
+    "sword_combat": {
+        "patterns": [
+            r"\b(sword|blade|steel|metal)\s+(clashing|ringing|singing|whistling|swishing|slicing)\b",
+            r"\b(clashing|ringing|singing|whistling|swishing|slicing)\s+(sword|blade|steel|metal)\b",
+            r"\b(swords?|blades?)\s+(crossing|meeting|striking|parrying|blocking)\b",
+            r"\b(steel|metal)\s+(against|meeting|striking)\s+(steel|metal)\b"
+        ],
+        "sound_folder": "triggers/sword",
+        "priority": 3
+    },
     
-    # Environmental
-    "forest": "ambience/cabin",
-    "mountain": "ambience/windy_mountains",
-    "castle": "ambience/cabin",
-    "cave": "ambience/cabin",
-    "night": "ambience/stormy_night",
-    "day": "ambience/default_ambience",
-    "morning": "ambience/default_ambience",
-    "evening": "ambience/stormy_night"
+    "armor_combat": {
+        "patterns": [
+            r"\b(armor|mail|plate|chainmail|breastplate|helmet|shield)\b",
+            r"\b(armor|mail|plate)\s+(clanking|rattling|jingling|creaking|scraping)\b",
+            r"\b(clanking|rattling|jingling|creaking|scraping)\s+(armor|mail|plate)\b",
+            r"\b(metal|steel)\s+(clanking|rattling|jingling)\b"
+        ],
+        "sound_folder": "triggers/armor",
+        "priority": 3
+    },
+    
+    "battle_combat": {
+        "patterns": [
+            r"\b(battle|combat|fight|war|conflict|skirmish|clash|melee)\b",
+            r"\b(raging|fierce|terrifying|epic|heroic|desperate|bloody)\s+(battle|combat|fight)\b",
+            r"\b(battle|combat|fight)\s+(raging|fierce|terrifying|epic|heroic|desperate|bloody)\b",
+            r"\b(arrows?|bolts?|missiles?)\s+(whistling|flying|striking|hitting)\b",
+            r"\b(bowstring|string)\s+(twanging|snapping|releasing)\b"
+        ],
+        "sound_folder": "triggers/battle",
+        "priority": 3
+    },
+    
+    # MAGIC & SUPERNATURAL
+    "magic_spells": {
+        "patterns": [
+            r"\b(magic|spell|enchantment|sorcery|wizardry|incantation|ritual)\b",
+            r"\b(magic|spell)\s+(crackling|humming|whispering|singing|roaring|exploding)\b",
+            r"\b(crackling|humming|whispering|singing|roaring|exploding)\s+(magic|spell)\b",
+            r"\b(wizard|mage|sorcerer|warlock|witch|enchanter)\s+(casting|chanting|muttering)\b",
+            r"\b(casting|chanting|muttering)\s+(spell|magic|incantation)\b"
+        ],
+        "sound_folder": "triggers/magic",
+        "priority": 2
+    },
+    
+    "supernatural": {
+        "patterns": [
+            r"\b(ghost|spirit|phantom|specter|apparition|wraith|shade)\b",
+            r"\b(ghost|spirit|phantom)\s+(whispering|moaning|wailing|sighing|laughing|crying)\b",
+            r"\b(whispering|moaning|wailing|sighing|laughing|crying)\s+(ghost|spirit|phantom)\b",
+            r"\b(ethereal|otherworldly|supernatural|mystical)\s+(whispers?|voices?|sounds?)\b"
+        ],
+        "sound_folder": "triggers/supernatural",
+        "priority": 2
+    },
+    
+    # ANIMALS & CREATURES
+    "birds": {
+        "patterns": [
+            r"\b(bird|owl|eagle|hawk|raven|crow|sparrow|finch|robin|wren)\b",
+            r"\b(bird|owl|eagle)\s+(chirping|singing|calling|crying|hooting|screeching|whistling)\b",
+            r"\b(chirping|singing|calling|crying|hooting|screeching|whistling)\s+(bird|owl|eagle)\b",
+            r"\b(wings?)\s+(flapping|beating|rustling|whirring)\b"
+        ],
+        "sound_folder": "triggers/birds",
+        "priority": 2
+    },
+    
+    "wolves_dogs": {
+        "patterns": [
+            r"\b(wolf|wolves|dog|hound|puppy|canine)\b",
+            r"\b(wolf|dog)\s+(howling|barking|growling|whining|yelping|snarling)\b",
+            r"\b(howling|barking|growling|whining|yelping|snarling)\s+(wolf|dog)\b",
+            r"\b(pack|wolves|dogs)\s+(howling|barking|growling)\b"
+        ],
+        "sound_folder": "triggers/wolves",
+        "priority": 2
+    },
+    
+    "other_animals": {
+        "patterns": [
+            r"\b(cat|kitten|feline)\s+(purring|meowing|hissing|growling|yowling)\b",
+            r"\b(purring|meowing|hissing|growling|yowling)\s+(cat|kitten|feline)\b",
+            r"\b(snake|serpent)\s+(hissing|slithering|coiling|striking)\b",
+            r"\b(bear|bear)\s+(roaring|growling|snarling|charging)\b",
+            r"\b(lion|tiger|leopard)\s+(roaring|growling|snarling|prowling)\b"
+        ],
+        "sound_folder": "triggers/animals",
+        "priority": 2
+    },
+    
+    # HUMAN SOUNDS
+    "human_voices": {
+        "patterns": [
+            r"\b(scream|shriek|yell|shout|cry|wail|sob|weep|laugh|giggle|chuckle)\b",
+            r"\b(desperate|piercing|bloodcurdling|terrifying|anguished)\s+(scream|shriek|cry)\b",
+            r"\b(raucous|hearty|booming|soft|gentle|hushed)\s+(laugh|laughter)\b",
+            r"\b(whisper|murmur|mutter|mumble|grumble|groan|sigh)\b",
+            r"\b(soft|gentle|hushed|urgent|desperate)\s+(whisper|murmur)\b"
+        ],
+        "sound_folder": "triggers/human_voices",
+        "priority": 2
+    },
+    
+    "human_body": {
+        "patterns": [
+            r"\b(heartbeat|heart|pulse)\s+(racing|pounding|thumping|beating|hammering)\b",
+            r"\b(racing|pounding|thumping|beating|hammering)\s+(heartbeat|heart|pulse)\b",
+            r"\b(breath|breathing)\s+(ragged|labored|heavy|shallow|quick|slow)\b",
+            r"\b(ragged|labored|heavy|shallow|quick|slow)\s+(breath|breathing)\b",
+            r"\b(footsteps?|footfall)\s+(approaching|retreating|echoing|distant)\b"
+        ],
+        "sound_folder": "triggers/human_body",
+        "priority": 2
+    },
+    
+    # MECHANICAL & OBJECTS
+    "doors_hinges": {
+        "patterns": [
+            r"\b(door|gate|portal|entrance)\b",
+            r"\b(door|gate)\s+(slamming|banging|knocking|creaking|squeaking|opening|closing)\b",
+            r"\b(slamming|banging|knocking|creaking|squeaking|opening|closing)\s+(door|gate)\b",
+            r"\b(hinges?)\s+(rattling|creaking|squeaking|groaning|protesting)\b",
+            r"\b(rattling|creaking|squeaking|groaning|protesting)\s+(hinges?)\b",
+            r"\b(lock|latch|bolt)\s+(clicking|snapping|sliding|turning)\b"
+        ],
+        "sound_folder": "triggers/doors",
+        "priority": 2
+    },
+    
+    "bells_clocks": {
+        "patterns": [
+            r"\b(bell|chime|gong|toll|ring)\b",
+            r"\b(bell|chime)\s+(tolling|chiming|ringing|pealing|clanging|jingling)\b",
+            r"\b(tolling|chiming|ringing|pealing|clanging|jingling)\s+(bell|chime)\b",
+            r"\b(clock|timepiece)\s+(ticking|chiming|striking|ringing)\b",
+            r"\b(ticking|chiming|striking|ringing)\s+(clock|timepiece)\b"
+        ],
+        "sound_folder": "triggers/bells",
+        "priority": 2
+    },
+    
+    "books_pages": {
+        "patterns": [
+            r"\b(book|tome|volume|manuscript|parchment|scroll)\b",
+            r"\b(pages?|leaves?)\s+(turning|rustling|fluttering|flicking|flipping)\b",
+            r"\b(turning|rustling|fluttering|flicking|flipping)\s+(pages?|leaves?)\b",
+            r"\b(paper|parchment)\s+(rustling|crinkling|tearing|folding)\b"
+        ],
+        "sound_folder": "triggers/books",
+        "priority": 2
+    },
+    
+    # ENVIRONMENTAL & ATMOSPHERIC
+    "forest_nature": {
+        "patterns": [
+            r"\b(forest|woods|grove|thicket|jungle|wilderness)\b",
+            r"\b(trees?|branches?|leaves?)\s+(rustling|swaying|creaking|groaning|falling)\b",
+            r"\b(rustling|swaying|creaking|groaning|falling)\s+(trees?|branches?|leaves?)\b",
+            r"\b(underbrush|bushes?|shrubs?)\s+(rustling|crackling|moving)\b"
+        ],
+        "sound_folder": "triggers/forest",
+        "priority": 2
+    },
+    
+    "cave_underground": {
+        "patterns": [
+            r"\b(cave|cavern|tunnel|passage|grotto|chamber|dungeon)\b",
+            r"\b(echoing|resonating|reverberating)\s+(footsteps?|voices?|sounds?)\b",
+            r"\b(dripping|trickling|flowing)\s+(water|liquid)\b",
+            r"\b(stalactites?|stalagmites?)\s+(dripping|forming)\b"
+        ],
+        "sound_folder": "triggers/cave",
+        "priority": 2
+    },
+    
+    "castle_architecture": {
+        "patterns": [
+            r"\b(castle|tower|fortress|citadel|palace|manor|keep)\b",
+            r"\b(stones?|walls?|towers?)\s+(creaking|groaning|settling|shifting)\b",
+            r"\b(creaking|groaning|settling|shifting)\s+(stones?|walls?|towers?)\b",
+            r"\b(drawbridge|portcullis|gate)\s+(lowering|raising|clanking)\b"
+        ],
+        "sound_folder": "triggers/castle",
+        "priority": 2
+    }
 }
+
+def get_random_sound_from_folder(folder_path: str) -> str:
+    """
+    Get a random sound file from a trigger folder.
+    
+    Args:
+        folder_path: Path to the trigger folder (e.g., "triggers/footsteps")
+        
+    Returns:
+        Full path to a random sound file, or default if folder doesn't exist
+    """
+    import os
+    import random
+    
+    # Base path for sound files (adjust as needed)
+    base_path = "mobile/app/sounds"  # or wherever your sounds are stored
+    
+    # Construct full folder path
+    full_folder_path = os.path.join(base_path, folder_path)
+    
+    # Check if folder exists
+    if not os.path.exists(full_folder_path):
+        # Return default sound if folder doesn't exist
+        return f"{folder_path}/default.mp3"
+    
+    # Get all sound files in the folder
+    sound_files = []
+    for file in os.listdir(full_folder_path):
+        if file.lower().endswith(('.mp3', '.wav', '.ogg')):
+            sound_files.append(file)
+    
+    # If no sound files found, return default
+    if not sound_files:
+        return f"{folder_path}/default.mp3"
+    
+    # Return random sound file
+    random_sound = random.choice(sound_files)
+    return f"{folder_path}/{random_sound}"
 
 def find_trigger_words(text: str) -> List[Dict]:
     """
-    Find trigger words in text and return them with timing information.
+    Advanced regex-based trigger word detection with folder-based sound pools.
     
     Args:
         text: The text to analyze
         
     Returns:
-        List of dictionaries with word, sound, and timing information
+        List of dictionaries with word/phrase, sound, and timing information
     """
     if not text:
         return []
@@ -401,22 +644,47 @@ def find_trigger_words(text: str) -> List[Dict]:
     estimated_reading_time_minutes = len(words) / 200.0  # 200 words per minute
     estimated_reading_time_seconds = estimated_reading_time_minutes * 60
     
-    # Find trigger words in the text
-    for trigger_word, sound_file in TRIGGER_WORDS.items():
-        if trigger_word in text_lower:
-            # Calculate timing based on word position in text
-            word_index = text_lower.find(trigger_word)
-            if word_index != -1:
-                # Estimate timing based on position in text
-                progress_ratio = word_index / len(text)
-                timing = progress_ratio * estimated_reading_time_seconds
+    # Track used positions to avoid overlapping triggers
+    used_positions = set()
+    
+    # Sort patterns by priority (higher priority first)
+    sorted_patterns = sorted(TRIGGER_PATTERNS.items(), key=lambda x: x[1]["priority"], reverse=True)
+    
+    for pattern_name, pattern_data in sorted_patterns:
+        for pattern in pattern_data["patterns"]:
+            # Find all matches for this pattern
+            matches = re.finditer(pattern, text_lower, re.IGNORECASE)
+            
+            for match in matches:
+                start_pos = match.start()
+                end_pos = match.end()
                 
-                trigger_words.append({
-                    "word": trigger_word,
-                    "sound": sound_file,
-                    "timing": timing,
-                    "position": word_index
-                })
+                # Check if this position overlaps with already used positions
+                position_overlaps = any(
+                    start_pos < used_end and end_pos > used_start
+                    for used_start, used_end in used_positions
+                )
+                
+                if not position_overlaps:
+                    # Calculate timing based on position in text
+                    progress_ratio = start_pos / len(text)
+                    timing = progress_ratio * estimated_reading_time_seconds
+                    
+                    # Get random sound from folder
+                    selected_sound = get_random_sound_from_folder(pattern_data["sound_folder"])
+                    
+                    trigger_words.append({
+                        "word": match.group(),
+                        "sound": selected_sound,
+                        "timing": timing,
+                        "position": start_pos,
+                        "type": "regex_pattern",
+                        "pattern_name": pattern_name,
+                        "folder_path": pattern_data["sound_folder"]
+                    })
+                    
+                    # Mark this position as used
+                    used_positions.add((start_pos, end_pos))
     
     # Sort by timing
     trigger_words.sort(key=lambda x: x["timing"])

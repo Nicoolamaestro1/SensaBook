@@ -3,14 +3,9 @@ from collections import Counter, defaultdict
 from typing import List, Dict, Tuple
 from sqlalchemy.orm import Session
 from .book import get_page
+from .page_analyzer import get_soundscape_recommendation
 
-# Define priority for scene-based ambience layering
-CARPET_PRIORITY = [
-    "fear", "storm",  "indoors", "castle", "hotel",
-    "library", "forest", "mountains", "travel", "eating"
-]
-
-# Main mapping of scenes to keywords and their carpet tracks
+# Scene sound mappings for carpet sounds (fallback system)
 SCENE_SOUND_MAPPINGS = {
     "eating": {
         "keywords": ["dinner", "supper", "eating", "meal", "restaurant", "food", "dining", "feast"],
@@ -119,7 +114,7 @@ def get_contextual_summary(text: str) -> str:
 def get_ambient_soundscape(book_id: int, chapter_number: int, page_number: int, db: Session) -> Dict:
     """
     Returns a structured soundscape dict for a specific book page.
-    Uses scene detection for carpet sounds and emotion analysis for trigger sounds.
+    Uses enhanced page analyzer with AdvancedEmotionAnalyzer for sophisticated analysis.
     """
     from app.models.book import Book
     
@@ -132,22 +127,11 @@ def get_ambient_soundscape(book_id: int, chapter_number: int, page_number: int, 
     if not book_page:
         return {"error": "Book page not found"}
 
-    # Get scene detection for carpet sounds
+    # Use the enhanced page analyzer with AdvancedEmotionAnalyzer
+    enhanced_analysis = get_soundscape_recommendation(book_page.content)
+    
+    # Get scene detection for display purposes (legacy - fallback)
     sorted_scenes, scene_counts, scene_positions = advanced_scene_detection(book_page.content)
-    
-    # Determine carpet sound based on detected scenes
-    carpet_tracks = []
-    if sorted_scenes:
-        # Use the most frequent scene for carpet sound
-        primary_scene = sorted_scenes[0]
-        if primary_scene in SCENE_SOUND_MAPPINGS:
-            carpet_sound = SCENE_SOUND_MAPPINGS[primary_scene]["carpet"]
-            carpet_tracks.append(carpet_sound)
-    
-    # Get trigger sounds using emotion analysis
-    triggered_sounds = detect_triggered_sounds(book_page.content)
-    
-    # Generate contextual summary
     context_summary = get_contextual_summary(book_page.content)
 
     return {
@@ -158,9 +142,14 @@ def get_ambient_soundscape(book_id: int, chapter_number: int, page_number: int, 
         "detected_scenes": sorted_scenes,
         "scene_keyword_counts": scene_counts,
         "scene_keyword_positions": scene_positions,
-        "carpet_tracks": carpet_tracks,
-        "triggered_sounds": triggered_sounds,
-        "mood": "scene_based",  # Indicate this is scene-based analysis
-        "confidence": len(sorted_scenes) / 10.0,  # Simple confidence based on scene detection
-        "reasoning": f"Detected scenes: {', '.join(sorted_scenes) if sorted_scenes else 'none'}"
+        "carpet_tracks": enhanced_analysis["carpet_tracks"],
+        "triggered_sounds": enhanced_analysis["triggered_sounds"],
+        "mood": enhanced_analysis["mood"],
+        "emotion": enhanced_analysis["emotion"],
+        "theme": enhanced_analysis["theme"],
+        "intensity": enhanced_analysis["intensity"],
+        "atmosphere": enhanced_analysis["atmosphere"],
+        "confidence": enhanced_analysis["confidence"],
+        "reasoning": enhanced_analysis["reasoning"],
+        "soundscape_recommendations": enhanced_analysis.get("soundscape_recommendations", {})
     }
