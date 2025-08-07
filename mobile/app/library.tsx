@@ -15,10 +15,12 @@ export default function LibraryScreen() {
   const [searchQuery, setSearchQuery] = React.useState("");
 
   useFocusEffect(
-  React.useCallback(() => {
-    SoundManager.stopAll(); // force stop svih zvukova kad udjes u Library
-  }, [])
-);
+    React.useCallback(() => {
+      return () => {
+        SoundManager.stopAll();
+      };
+    }, [])
+  );
 
   // Filter books
   const filteredBooks = books.filter((book) =>
