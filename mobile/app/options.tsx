@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 export type ReadingSpeed = "slow" | "avarage" | "fast";
 export default function Option() {
   const [developmentMode, setDevelopmentMode] = useState(true);
-  const [readingSpeed, setReadingSpeed] = useState<ReadingSpeed>("avarage");
+  const [readingSpeed, setReadingSpeed] = useState<ReadingSpeed>("slow");
 
   const handleBack = () => {
     const params = [];

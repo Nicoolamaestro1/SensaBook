@@ -5,22 +5,29 @@ class SoundManager {
   private static activeSounds: Set<Audio.Sound> = new Set();
   private static isCarpetLoading: boolean = false;
 
-  static async fadeIn(sound: Audio.Sound, duration = 2000, targetVolume = 0.5) {
-    const steps = 20;
+  // Smooth fade-in effect with shorter duration and fewer steps for seamless experience
+  static async fadeIn(sound: Audio.Sound, duration = 1200, targetVolume = 0.5) {
+    const steps = 10;
     const stepTime = duration / steps;
-    for (let i = 0; i <= steps; i++) {
-      await sound.setVolumeAsync((i / steps) * targetVolume);
+
+    // Set initial volume immediately after play, so the sound is not completely silent
+    await sound.setVolumeAsync(0.02);
+
+    for (let i = 1; i <= steps; i++) {
+      const volume = (i / steps) * targetVolume;
+      await sound.setVolumeAsync(volume);
       await new Promise((res) => setTimeout(res, stepTime));
     }
   }
 
-  static async fadeOut(sound: Audio.Sound, duration = 2000) {
+  // Smooth fade-out effect, faster for responsive UI
+  static async fadeOut(sound: Audio.Sound, duration = 800) {
     const status = await sound.getStatusAsync();
     if (!status.isLoaded) return;
     const initialVolume = status.volume ?? 1.0;
-    const steps = 20;
+    const steps = 10;
     const stepTime = duration / steps;
-    for (let i = steps; i >= 0; i--) {
+    for (let i = steps - 1; i >= 0; i--) {
       await sound.setVolumeAsync((i / steps) * initialVolume);
       await new Promise((res) => setTimeout(res, stepTime));
     }
@@ -28,6 +35,7 @@ class SoundManager {
     await sound.unloadAsync();
   }
 
+  // Stops all active sounds, including carpet and triggers
   static async stopAll() {
     await this.stopCarpet();
     for (const sound of this.activeSounds) {
@@ -40,6 +48,7 @@ class SoundManager {
     console.log("✅ All sounds stopped");
   }
 
+  // Plays the looping carpet/background sound with fade-in
   static async playCarpet(asset: any) {
     if (this.isCarpetLoading) return;
     this.isCarpetLoading = true;
@@ -49,12 +58,12 @@ class SoundManager {
       const { sound } = await Audio.Sound.createAsync(asset, {
         shouldPlay: false,
         isLooping: true,
-        volume: 0.0,
+        volume: 0.02, // Start quietly for instant audio feedback
       });
       this.carpetSound = sound;
 
       await sound.playAsync();
-      await this.fadeIn(sound, 1500, 0.5); // fade to 0.5 in 1.5s
+      await this.fadeIn(sound, 1200, 0.5); // Fade up to 0.5 in 1.2s
       console.log("🎵 Carpet sound started (with fade in)");
     } catch (e) {
       console.log("Carpet play error:", e);
@@ -63,13 +72,14 @@ class SoundManager {
     }
   }
 
+  // Stops the carpet/background sound with fade-out
   static async stopCarpet() {
     if (this.carpetSound) {
       try {
-        await this.fadeOut(this.carpetSound, 1200);
+        await this.fadeOut(this.carpetSound, 800);
         console.log("🛑 Carpet sound stopped (with fade out)");
       } catch (e) {
-        // fallback: force stop/unload
+        // Fallback: force stop/unload if fade fails
         try {
           await this.carpetSound.stopAsync();
           await this.carpetSound.unloadAsync();
@@ -80,18 +90,18 @@ class SoundManager {
   }
 
   /**
-   * Play one-shot trigger sound (does not loop).
+   * Plays a one-shot trigger sound (not looping).
    */
   static async playTrigger(asset: any) {
     try {
       const { sound } = await Audio.Sound.createAsync(asset, {
         shouldPlay: true,
         isLooping: false,
-        volume: 0.8,
+        volume: 0.02, // Start quietly
       });
 
       this.activeSounds.add(sound);
-      await this.fadeIn(sound, 400, 0.8);
+      await this.fadeIn(sound, 300, 0.8); // Quick fade-in for trigger sound
 
       sound.setOnPlaybackStatusUpdate((status: any) => {
         if (status.didJustFinish) {
