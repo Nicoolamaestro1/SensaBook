@@ -20,6 +20,7 @@ import cabin from "../sounds/cabin.mp3";
 import windHowl from "../sounds/wind.mp3";
 
 import { useBook } from "../../hooks/useBooks";
+import { ReadingSpeed } from "../options";
 
 const SOUND_MAP: Record<string, any> = {
   "windy_mountains.mp3": windyMountains,
@@ -56,19 +57,15 @@ interface TriggerWord {
 }
 
 export default function BookDetailScreen() {
-  const { bookId } = useLocalSearchParams();
+  const { bookId, readingSpeed: readingSpeedParam, development: isDevelopmentMode } = useLocalSearchParams();
   const [currentChapterIndex, setCurrentChapterIndex] = React.useState(0);
   const [currentPageIndex, setCurrentPageIndex] = React.useState(0);
   const [currentChunkIndex, setCurrentChunkIndex] = React.useState(0);
   const [paginatedChunks, setPaginatedChunks] = React.useState<string[]>([]);
   const [triggerWords, setTriggerWords] = React.useState<TriggerWord[]>([]);
-  const [readingStartTime, setReadingStartTime] = React.useState<number>(0);
-  const [isReading, setIsReading] = React.useState(false);
   const [activeTriggerWords, setActiveTriggerWords] = React.useState<Set<string>>(new Set());
-  const [playedWords, setPlayedWords] = React.useState<Set<string>>(new Set());
   const router = useRouter();
   const [activeWordIndex, setActiveWordIndex] = React.useState<number | null>(null);
-  const [soundscapeData, setSoundscapeData] = React.useState<any>(null);
 
   const wordIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -101,14 +98,20 @@ export default function BookDetailScreen() {
     return pages;
   };
 
+  const readingSpeedMap: Record<ReadingSpeed, number> =  {
+    "slow": 100,
+    "avarage": 200,
+    "fast": 300,
+  }
   // Calculates ms per word (reading speed)
-  const calculateWordTiming = (text: string, wpm: number = 120) => {
+  const calculateWordTiming = (text: string) => {
     if (!text) return { words: [], msPerWord: 333 };
     const words = text.split(/\s+/).filter(Boolean);
-    const msPerWord = 60_000 / wpm;
+    const readingSpeed = readingSpeedMap[readingSpeedParam as ReadingSpeed];
+    const msPerWord = readingSpeed ? 60_000 / readingSpeed : 200;
     return { words, msPerWord };
   };
-
+  
   // Finds trigger words in text
   const findTriggerWords = (text: string) => {
     const { words, msPerWord } = calculateWordTiming(text);
@@ -130,8 +133,6 @@ export default function BookDetailScreen() {
 
   // Stops the reading timer and all highlight/trigger states
   const stopReadingTimer = React.useCallback(() => {
-    setIsReading(false);
-    setPlayedWords(new Set());
     setActiveTriggerWords(new Set());
     setActiveWordIndex(null);
     if (wordIntervalRef.current) {
@@ -143,9 +144,6 @@ export default function BookDetailScreen() {
   // Starts the reading timer, highlights words and plays triggers
   const startReadingTimer = React.useCallback(() => {
     stopReadingTimer();
-    setReadingStartTime(Date.now());
-    setIsReading(true);
-    setPlayedWords(new Set());
     setActiveTriggerWords(new Set());
     setActiveWordIndex(0);
 
@@ -344,15 +342,14 @@ export default function BookDetailScreen() {
     return (
       <Text style={styles.pageText}>
         {words.map((word, index) => {
-          const clean = word.toLowerCase().replace(/[^\w]/g, "");
-          const trigger = triggerWords.find(t => t.position === index);
           const isActiveTrigger = activeTriggerWords.has(`${index}`);
           const isActiveReading = activeWordIndex === index;
 
           let style = undefined;
-          if (isActiveTrigger) style = styles.triggerHighlight;
-          else if (isActiveReading) style = styles.wordBorderHighlight;
-
+          if(isDevelopmentMode) {
+            if (isActiveTrigger) style =  styles.triggerHighlight;
+            else if (isActiveReading) style = styles.wordBorderHighlight;
+          }
           return (
             <Text key={index} style={style}>
               {word}{index !== words.length - 1 ? " " : ""}
