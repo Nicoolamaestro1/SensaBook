@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { View, Image, StyleSheet, FlatList, Dimensions, TouchableOpacity, Text, ActivityIndicator, TextInput } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Href, useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import { Audio } from 'expo-av';
 import { useBooks } from '../hooks/useBooks';
@@ -11,7 +11,7 @@ const { width } = Dimensions.get("window");
 export default function LibraryScreen() {
   const router = useRouter();
   const { books, loading } = useBooks() as { books: any[], loading: boolean };
-
+  const { readingSpeed, development } = useLocalSearchParams();
   const [searchQuery, setSearchQuery] = React.useState("");
 
   useFocusEffect(
@@ -21,6 +21,15 @@ export default function LibraryScreen() {
       };
     }, [])
   );
+
+  const handleBookPress = (bookId: string) => {
+    const params = [];
+    if (readingSpeed) params.push(`readingSpeed=${readingSpeed}`);
+    if (development) params.push(`development=${development}`);
+    const queryString = params.length ? `?${params.join("&")}` : "";
+    router.push(`/book/${bookId}${queryString}`);
+  }
+
 
   // Filter books
   const filteredBooks = books.filter((book) =>
@@ -56,7 +65,7 @@ export default function LibraryScreen() {
             <View style={[styles.cardWrapper, { flex: 1 / 3 }]}>
               <TouchableOpacity
                 style={styles.card}
-                onPress={() => router.push(`/book/${item.id}`)}
+                onPress={() => handleBookPress(item.id)}
                 activeOpacity={0.85}
               >
                 {item.cover_url ? (
