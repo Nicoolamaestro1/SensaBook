@@ -478,9 +478,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   wordBorderHighlight: {
-    borderColor: "#5b4636",
-    borderWidth: 1,
-    borderRadius: 4,
+    textDecorationLine: "underline",
     padding: 2,
   },
 });
