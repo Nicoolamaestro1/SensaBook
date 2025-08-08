@@ -339,26 +339,27 @@ export default function BookDetailScreen() {
   // --- Render words with highlights ---
   const renderTextWithHighlights = (text: string) => {
     const words = text.split(/\s+/).filter(Boolean);
-    return (
+      return (
       <Text style={styles.pageText}>
-        {words.map((word, index) => {
-          const isActiveTrigger = activeTriggerWords.has(`${index}`);
-          const isActiveReading = activeWordIndex === index;
+          {words.map((word, index) => {
+            const clean = word.toLowerCase().replace(/[^\w]/g, "");
+            const trigger = triggerWords.find(t => t.position === index);
+            const isActiveTrigger = activeTriggerWords.has(`${index}`);
+            const isActiveReading = activeWordIndex === index;
 
-          let style = undefined;
-          if(isDevelopmentMode) {
-            if (isActiveTrigger) style =  styles.triggerHighlight;
+            let style = undefined;
+            if (isActiveTrigger) style = styles.triggerHighlight;
             else if (isActiveReading) style = styles.wordBorderHighlight;
-          }
-          return (
-            <Text key={index} style={style}>
-              {word}{index !== words.length - 1 ? " " : ""}
-            </Text>
-          );
-        })}
-      </Text>
-    );
-  };
+
+            return (
+              <Text key={index} style={style}>
+                {word}{index !== words.length - 1 ? " " : ""}
+              </Text>
+            );
+          })}
+        </Text>
+      );
+    };
 
   if (loading) {
     return (
