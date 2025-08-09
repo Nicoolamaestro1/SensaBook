@@ -23,6 +23,7 @@ import { WORD_TRIGGERS, TriggerWord, SOUND_MAP } from "../../constants/sounds";
 import CrossPlatformSlider from "../components/CrossPlatformSlider";
 const { height, width } = Dimensions.get("window");
 
+
 export default function BookDetailScreen() {
   // ---- URL-based navigation state ----
   const params = useLocalSearchParams();

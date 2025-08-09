@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from datetime import datetime
 
 from app.db.session import get_db
@@ -11,6 +11,8 @@ from app.models.book import Book, Chapter, Page
 from app.services.emotion_analysis import emotion_analyzer
 from app.services.reading_analytics import reading_analytics
 from app.services.soundscape import get_ambient_soundscape
+from app.services.page_analyzer import analyze_page_complete, get_soundscape_recommendation
+from app.services.mood_analyzer import MoodAnalyzer
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -337,3 +339,193 @@ def get_book_emotion_analysis(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error analyzing book: {str(e)}"
         ) 
+
+@router.post("/analyze-page")
+def analyze_page_text(text: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """
+    Analyze a page of text and return complete mood and sound analysis.
+    
+    Args:
+        text: The page content to analyze
+        
+    Returns:
+        Complete analysis including mood, trigger words, and soundscape recommendations
+    """
+    try:
+        # Get complete analysis
+        analysis = analyze_page_complete(text)
+        
+        # Get soundscape recommendation
+        soundscape = get_soundscape_recommendation(text)
+        
+        return {
+            "success": True,
+            "analysis": {
+                "primary_mood": analysis["primary_mood"],
+                "secondary_mood": analysis["secondary_mood"],
+                "confidence": analysis["confidence"],
+                "reasoning": analysis["reasoning"],
+                "trigger_words": analysis["trigger_words"],
+                "mood_analysis": {
+                    "detected_elements": analysis["mood_analysis"].detected_elements,
+                    "suggested_sound": analysis["mood_analysis"].suggested_sound
+                }
+            },
+            "soundscape": soundscape,
+            "summary": {
+                "mood": analysis["primary_mood"],
+                "trigger_count": len(analysis["trigger_words"]),
+                "confidence": analysis["confidence"]
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+@router.get("/analyze-book-page/{book_id}/{chapter_number}/{page_number}")
+def analyze_book_page(book_id: int, chapter_number: int, page_number: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """
+    Analyze a specific book page and return complete soundscape analysis.
+    
+    Args:
+        book_id: ID of the book
+        chapter_number: Chapter number
+        page_number: Page number within the chapter
+        
+    Returns:
+        Complete soundscape analysis for the book page
+    """
+    try:
+        # Get soundscape using the integrated service
+        soundscape = get_ambient_soundscape(book_id, chapter_number, page_number, db)
+        
+        if "error" in soundscape:
+            raise HTTPException(status_code=404, detail=soundscape["error"])
+        
+        return {
+            "success": True,
+            "book_id": book_id,
+            "chapter_number": chapter_number,
+            "page_number": page_number,
+            "soundscape": soundscape,
+            "summary": {
+                "mood": soundscape.get("mood", "unknown"),
+                "carpet_tracks": len(soundscape.get("carpet_tracks", [])),
+                "triggered_sounds": len(soundscape.get("triggered_sounds", [])),
+                "confidence": soundscape.get("confidence", 0.0)
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+@router.post("/analyze-text-batch")
+def analyze_text_batch(texts: list[str], db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """
+    Analyze multiple text samples in batch.
+    
+    Args:
+        texts: List of text samples to analyze
+        
+    Returns:
+        Batch analysis results
+    """
+    try:
+        results = []
+        total_triggers = 0
+        mood_distribution = {}
+        
+        for i, text in enumerate(texts):
+            analysis = analyze_page_complete(text)
+            soundscape = get_soundscape_recommendation(text)
+            
+            # Count mood distribution
+            mood = analysis["primary_mood"]
+            mood_distribution[mood] = mood_distribution.get(mood, 0) + 1
+            
+            # Count triggers
+            total_triggers += len(analysis["trigger_words"])
+            
+            results.append({
+                "index": i,
+                "mood": mood,
+                "confidence": analysis["confidence"],
+                "trigger_count": len(analysis["trigger_words"]),
+                "carpet_sound": analysis["carpet_sound"],
+                "summary": f"{mood} mood with {len(analysis['trigger_words'])} triggers"
+            })
+        
+        return {
+            "success": True,
+            "total_texts": len(texts),
+            "total_triggers": total_triggers,
+            "average_triggers": total_triggers / len(texts) if texts else 0,
+            "mood_distribution": mood_distribution,
+            "results": results
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Batch analysis failed: {str(e)}")
+
+@router.get("/mood-categories")
+def get_mood_categories() -> Dict[str, Any]:
+    """
+    Get available mood categories and their characteristics.
+    
+    Returns:
+        Dictionary of mood categories with keywords and descriptions
+    """
+    analyzer = MoodAnalyzer()
+    categories = {}
+    
+    for mood, data in analyzer.MOOD_CATEGORIES.items():
+        categories[mood] = {
+            "description": data["description"],
+            "keywords": data["keywords"][:5],  # Show first 5 keywords
+            "sounds": data["sounds"][:3],      # Show first 3 sounds
+            "keyword_count": len(data["keywords"]),
+            "sound_count": len(data["sounds"])
+        }
+    
+    return {
+        "success": True,
+        "total_categories": len(categories),
+        "categories": categories
+    }
+
+@router.get("/trigger-words")
+def get_trigger_words() -> Dict[str, Any]:
+    """
+    Get available trigger words and their sound mappings.
+    
+    Returns:
+        Dictionary of trigger words organized by category
+    """
+    from app.services.emotion_analysis import TRIGGER_WORDS
+    
+    # Organize trigger words by category
+    categories = {
+        "weather": ["wind", "thunder", "rain", "storm", "lightning", "snow", "fog", "breeze"],
+        "fire": ["fire", "flame", "burning", "smoke"],
+        "water": ["water", "river", "stream", "ocean", "splash", "drip"],
+        "movement": ["footsteps", "walking", "running", "horse", "carriage", "wheels"],
+        "combat": ["sword", "battle", "fight", "war", "arrow", "shield", "armor", "chains"],
+        "magic": ["magic", "spell", "wizard", "dragon", "ghost", "spirit"],
+        "animals": ["bird", "owl", "wolf", "horse", "dog", "cat"],
+        "human": ["scream", "whisper", "laugh", "cry", "heartbeat", "breath"],
+        "mechanical": ["door", "creak", "bell", "book", "page", "clock"],
+        "environmental": ["forest", "mountain", "castle", "cave", "night", "day", "morning", "evening"]
+    }
+    
+    organized_words = {}
+    for category, words in categories.items():
+        organized_words[category] = {
+            word: TRIGGER_WORDS.get(word, "unknown_sound")
+            for word in words
+            if word in TRIGGER_WORDS
+        }
+    
+    return {
+        "success": True,
+        "total_trigger_words": len(TRIGGER_WORDS),
+        "categories": organized_words
+    } 

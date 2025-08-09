@@ -3,162 +3,136 @@ from collections import Counter, defaultdict
 from typing import List, Dict, Tuple
 from sqlalchemy.orm import Session
 from .book import get_page
+from .page_analyzer import get_soundscape_recommendation
 
-# Define priority for scene-based ambience layering
-CARPET_PRIORITY = [
-    "fear", "storm",  "indoors", "castle", "hotel",
-    "library", "forest", "mountains", "travel", "eating"
-]
-
-# Main mapping of scenes to keywords and their carpet tracks
+# Scene sound mappings for carpet sounds (fallback system)
 SCENE_SOUND_MAPPINGS = {
     "eating": {
         "keywords": ["dinner", "supper", "eating", "meal", "restaurant", "food", "dining", "feast"],
-        "carpet": "restaurant_murmur.mp3"
+        "carpet": "ambience/atmosphere-sound-effect-239969.mp3"
     },
     "hotel": {
         "keywords": ["hotel", "lobby", "room service", "inn", "accommodation", "reception"],
-        "carpet": "hotel_lobby.mp3"
+        "carpet": "ambience/atmosphere-sound-effect-239969.mp3"
     },
     "library": {
         "keywords": ["museum", "library", "books", "research", "study", "academic", "scholarly"],
-        "carpet": "quiet_museum.mp3"
+        "carpet": "ambience/default_ambience.mp3"
     },
     "travel": {
         "keywords": ["carriage", "train", "journey", "trip", "traveling", "voyage", "expedition"],
-        "carpet": "horse_carriage.mp3"
+        "carpet": "ambience/footsteps-approaching-316715.mp3"
     },
     "storm": {
         "keywords": ["storm", "thunder", "lightning", "rain", "downpour", "tempest", "gale"],
-        "carpet": "stormy_night.mp3"
+        "carpet": "ambience/stormy_night.mp3"
     },
     "forest": {
         "keywords": ["forest", "trees", "woods", "grove", "thicket", "wilderness"],
-        "carpet": "night_forest.mp3"
+        "carpet": "ambience/windy_mountains.mp3"
     },
     "castle": {
         "keywords": ["castle", "keep", "tower", "gates", "fortress", "palace", "citadel"],
-        "carpet": "stone_echoes.mp3"
+        "carpet": "ambience/tense_drones.mp3"
     },
     "mountains": {
         "keywords": ["mountains", "cliff", "peak", "valley", "summit", "ridge", "alpine"],
-        "carpet": "windy_mountains.mp3"
+        "carpet": "ambience/windy_mountains.mp3"
     },
     "fear": {
         "keywords": ["superstition", "afraid", "creepy", "haunted", "dark", "disaster", "evil", "terrifying"],
-        "carpet": "tense_drones.mp3"
+        "carpet": "ambience/tense_drones.mp3"
     },
     "indoors": {
-        "keywords": ["cabin", "indoors", "inside", "house", "room", "building", "apartment", "home", "wall", "walls",
-        "roof"],
-        "carpet": "cabin.mp3"
+        "keywords": ["cabin", "indoors", "inside", "house", "room", "building", "apartment", "home", "wall", "walls", "roof"],
+        "carpet": "ambience/cabin.mp3"
     }
-}
-
-# Specific word-level sound triggers
-WORD_TO_SOUND = {
-    "thunder": "thunder-city-377703.mp3",
-    "lightning": "flash_pop.mp3",
-    "door": "door_creak.mp3",
-    "bird": "bird_chirp.mp3",
-    "horse": "horse_neigh.mp3",
-    "owl": "owl_hoot.mp3",
-    "scream": "distant_scream.mp3",
-    "fire": "fire_crackle.mp3",
-    "wind": "wind.mp3",
-    "chains": "chains_rattle.mp3",
-    "footsteps": "footstep_wood.mp3",
-    "clank": "armor_clank.mp3",
-    "book": "page_turn.mp3",
-    "bell": "bell_ring.mp3",
-    "creak": "wood_creak.mp3",
-    "laugh": "soft_laughter.mp3",
-    "heartbeat": "heartbeat_slow.mp3",
-    "whisper": "whisper_ghostly.mp3"
 }
 
 def advanced_scene_detection(text: str) -> Tuple[List[str], Dict[str, int], Dict[str, List[int]]]:
     """
-    Returns:
-        - a sorted list of detected scenes (by context relevance and priority)
-        - a dict of scene:frequency
-        - a dict of scene:[token positions]
+    Detect scenes in text and return scene information.
     """
-    text = text.lower()
-    scene_counter = Counter()
-    scene_positions = defaultdict(list)
+    if not text:
+        return [], {}, {}
     
-    # Simple keyword matching
-    for scene, data in SCENE_SOUND_MAPPINGS.items():
-        for keyword in data["keywords"]:
-            if keyword in text:
-                scene_counter[scene] += 1
-                # Find position (simplified)
-                pos = text.find(keyword)
-                if pos != -1:
-                    scene_positions[scene].append(pos)
-
-    sorted_scenes = sorted(
-        scene_counter,
-        key=lambda s: (-scene_counter[s], CARPET_PRIORITY.index(s) if s in CARPET_PRIORITY else 999)
-    )
-    return sorted_scenes, dict(scene_counter), dict(scene_positions)
+    text_lower = text.lower()
+    detected_scenes = []
+    scene_counts = {}
+    scene_positions = {}
+    
+    for scene_name, scene_data in SCENE_SOUND_MAPPINGS.items():
+        keywords = scene_data["keywords"]
+        matches = []
+        
+        for keyword in keywords:
+            # Find all occurrences of the keyword
+            positions = [m.start() for m in re.finditer(r'\b' + re.escape(keyword) + r'\b', text_lower)]
+            if positions:
+                matches.extend(positions)
+        
+        if matches:
+            detected_scenes.append(scene_name)
+            scene_counts[scene_name] = len(matches)
+            scene_positions[scene_name] = matches
+    
+    # Sort scenes by frequency (most frequent first)
+    sorted_scenes = sorted(detected_scenes, key=lambda x: scene_counts[x], reverse=True)
+    
+    return sorted_scenes, scene_counts, scene_positions
 
 def detect_triggered_sounds(text: str) -> List[Dict]:
     """
-    Detects individual sound words in the text and maps them to sound effects.
+    Detect specific words that should trigger sound effects.
     """
-    text = text.lower()
-    triggered = []
-    
-    for word, sound in WORD_TO_SOUND.items():
-        if word in text:
-            pos = text.find(word)
-            triggered.append({
-                "word": word,
-                "sound": sound,
-                "position": pos
-            })
-    
-    return triggered
+    # Use the emotion analysis for trigger word detection
+    from .emotion_analysis import find_trigger_words
+    return find_trigger_words(text)
 
 def get_contextual_summary(text: str) -> str:
-    """
-    Returns the first sentence as a simple summary.
-    Can be replaced with a true summarizer later.
-    """
-    sentences = text.split('.')
-    if sentences:
-        return sentences[0].strip()
-    return text[:120] + "..." if len(text) > 120 else text
+    """Generate a contextual summary of the text for debugging."""
+    if not text:
+        return "Empty text"
+    
+    # Get scene detection
+    sorted_scenes, scene_counts, scene_positions = advanced_scene_detection(text)
+    
+    summary_parts = []
+    
+    if sorted_scenes:
+        scene_info = [f"{scene}({scene_counts[scene]})" for scene in sorted_scenes[:3]]
+        summary_parts.append(f"Scenes: {', '.join(scene_info)}")
+    
+    # Add trigger word info
+    trigger_words = detect_triggered_sounds(text)
+    if trigger_words:
+        trigger_words_list = [tw["word"] for tw in trigger_words]
+        summary_parts.append(f"Triggers: {', '.join(trigger_words_list)}")
+    
+    return "; ".join(summary_parts) if summary_parts else "No scenes or triggers detected"
 
 def get_ambient_soundscape(book_id: int, chapter_number: int, page_number: int, db: Session) -> Dict:
     """
-    Returns a structured soundscape dict for the given book page.
-    Combines ambient carpet tracks and triggered sounds.
+    Returns a structured soundscape dict for a specific book page.
+    Uses enhanced page analyzer with AdvancedEmotionAnalyzer for sophisticated analysis.
     """
+    from app.models.book import Book
+    
+    # Get the book and page
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if not book:
+        return {"error": "Book not found"}
+    
     book_page = get_page(book_id=book_id, chapter_number=chapter_number, page_number=page_number, db=db)
     if not book_page:
         return {"error": "Book page not found"}
 
-    text = book_page.content
-    sorted_scenes, scene_counts, scene_positions = advanced_scene_detection(text)
-    triggered_sounds = detect_triggered_sounds(text)
-    context_summary = get_contextual_summary(text)
-
-    # Get carpet tracks based on detected scenes
-    carpet_tracks = [
-        SCENE_SOUND_MAPPINGS[s]["carpet"]
-        for s in sorted_scenes[:2]
-        if s in SCENE_SOUND_MAPPINGS
-    ]
+    # Use the enhanced page analyzer with AdvancedEmotionAnalyzer
+    enhanced_analysis = get_soundscape_recommendation(book_page.content)
     
-    # If no scenes detected, use default tracks
-    if not carpet_tracks:
-        # Cycle through available sounds based on page number
-        available_sounds = [
-            "windy_mountains.mp3",
-        ]
+    # Get scene detection for display purposes (legacy - fallback)
+    sorted_scenes, scene_counts, scene_positions = advanced_scene_detection(book_page.content)
+    context_summary = get_contextual_summary(book_page.content)
 
     return {
         "book_id": book_id,
@@ -168,6 +142,14 @@ def get_ambient_soundscape(book_id: int, chapter_number: int, page_number: int, 
         "detected_scenes": sorted_scenes,
         "scene_keyword_counts": scene_counts,
         "scene_keyword_positions": scene_positions,
-        "carpet_tracks": carpet_tracks,
-        "triggered_sounds": triggered_sounds
+        "carpet_tracks": enhanced_analysis["carpet_tracks"],
+        "triggered_sounds": enhanced_analysis["triggered_sounds"],
+        "mood": enhanced_analysis["mood"],
+        "emotion": enhanced_analysis["emotion"],
+        "theme": enhanced_analysis["theme"],
+        "intensity": enhanced_analysis["intensity"],
+        "atmosphere": enhanced_analysis["atmosphere"],
+        "confidence": enhanced_analysis["confidence"],
+        "reasoning": enhanced_analysis["reasoning"],
+        "soundscape_recommendations": enhanced_analysis.get("soundscape_recommendations", {})
     }
