@@ -7,17 +7,17 @@ import SoundManager from "../utils/soundManager";
 import { useRouter } from "expo-router";
 const { height, width } = Dimensions.get("window");
 
-import windyMountains from "../sounds/windy_mountains.mp3";
-import defaultAmbience from "../sounds/default_ambience.mp3";
-import tenseDrones from "../sounds/tense_drones.mp3";
-import footstepsApproaching from "../sounds/footsteps-approaching-316715.mp3";
-import atmosphereSound from "../sounds/atmosphere-sound-effect-239969.mp3";
-import thunderCity from "../sounds/thunder-city-377703.mp3";
-import stormyNight from "../sounds/stormy_night.mp3";
-import storm from "../sounds/storm.mp3";
-import cabinRain from "../sounds/cabin_rain.mp3";
-import cabin from "../sounds/cabin.mp3";
-import windHowl from "../sounds/wind.mp3";
+import windyMountains from "../sounds/ambience/windy_mountains.mp3";
+import defaultAmbience from "../sounds/ambience/default_ambience.mp3";
+import tenseDrones from "../sounds/ambience/tense_drones.mp3";
+import footstepsApproaching from "../sounds/triggers/footsteps/footsteps-approaching-316715.mp3";
+import atmosphereSound from "../sounds/ambience/atmosphere-sound-effect-239969.mp3";
+import thunderCity from "../sounds/ambience/thunder-city-377703.mp3";
+import stormyNight from "../sounds/ambience/stormy_night.mp3";
+import storm from "../sounds/triggers/storm/storm.mp3";
+import cabinRain from "../sounds/ambience/cabin_rain.mp3";
+import cabin from "../sounds/ambience/cabin.mp3";
+import windHowl from "../sounds/triggers/wind/wind.mp3";
 
 import { useBook } from "../../hooks/useBooks";
 
@@ -291,6 +291,9 @@ export default function BookDetailScreen() {
         const soundAsset = SOUND_MAP[soundFile];
         if (soundAsset) {
           await SoundManager.playCarpet(soundAsset);
+        } else {
+          console.warn(`Sound asset not found for: ${soundFile}`);
+          await SoundManager.stopAll();
         }
       } else {
         await SoundManager.stopAll();

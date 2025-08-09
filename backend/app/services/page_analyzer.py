@@ -97,8 +97,8 @@ class PageAnalyzer:
         # Emotion confidence (30% weight)
         emotion_confidence = emotion_analysis.confidence
         
-        # Theme confidence (20% weight)
-        theme_confidence = theme_analysis.confidence
+        # Theme confidence (20% weight) - calculate based on theme scores
+        theme_confidence = max(theme_analysis.theme_scores.values()) if theme_analysis.theme_scores else 0.5
         
         # Trigger words confidence (10% weight)
         trigger_confidence = min(len(trigger_words) / 5.0, 1.0)

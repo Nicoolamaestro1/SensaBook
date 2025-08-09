@@ -31,8 +31,9 @@ class PageOut(BaseModel):
     page_number: int
     content: str
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
 
 class ChapterOut(BaseModel):
     id: int
@@ -40,8 +41,9 @@ class ChapterOut(BaseModel):
     title: Optional[str]
     pages: List[PageOut] = []
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
 
 class BookOut(BaseModel):
     id: int
@@ -52,8 +54,9 @@ class BookOut(BaseModel):
     genre: Optional[str]
     chapters: List[ChapterOut] = []
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
 
 # GET all books (osnovni pregled)
 @router.get("/books", response_model=List[BookOut])

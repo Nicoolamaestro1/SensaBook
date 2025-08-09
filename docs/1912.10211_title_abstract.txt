@@ -1,0 +1,78 @@
+
+--- PAGE 2 ---
+1
+PANNs: Large-Scale Pretrained Audio Neural Networks for
+Audio Pattern Recognition
+Qiuqiang Kong, Student Member, IEEE, Yin Cao, Member, IEEE, Turab Iqbal,
+Yuxuan Wang, Wenwu Wang, Senior Member, IEEE and Mark D. Plumbley, Fellow, IEEE
+Abstract—Audio pattern recognition is an important research Markov model (HMM) to classify three types of sounds:
+topic in the machine learning area, and includes several tasks wooden door open and shut, metal dropped and water poured.
+such as audio tagging, acoustic scene classification and sound
+Recently, the Detection and Classification of Acoustic Scenes
+event detection. Recently neural networks have been applied
+and Events (DCASE) challenge series since 2013 [8], [9],
+to solve audio pattern recognition problems. However, previous
+systems focus on small datasets, which limits the performance [10], [2] have provided publicly available datasets including
+of audio pattern recognition systems. Recently in computer acousticsceneclassificationandsoundeventdetectiondatasets
+vision and natural language processing, systems pretrained on for researchers to use. The DCASE challenges have attracted
+large datasets have generalized well to several tasks. However,
+increasingresearchinterestsinrecentyears.TheDCASE2019
+there is limited research on pretraining neural networks on
+challenge received 311 entries in five subtasks [11].
+large datasets for audio pattern recognition. In this paper, we
+propose large-scale pretrained audio neural networks (PANNs) Though there were increasing works [11] on audio pattern
+trained on AudioSet. We propose to use Wavegram, a feature recognition using the DCASE challenge datasets, it is still
+learned from waveform, and the mel spectrogram as input. an open question of how good an audio pattern recognition
+We investigate the performance and complexity of a variety of
+systemcanperformwhenlarge-scaletrainingdataisavailable.
+convolutional neural networks. Our proposed AudioSet tagging
+In computer vision, there is existing research on using the
+systemachievesastate-of-the-artmeanaverageprecision(mAP)
+of 0.439, outperforming the best previous system of 0.392. We large-scale ImageNet [12] for image classification. In natural
+transferred a PANN to six audio pattern recognition tasks and language processing, there is research on using large-scale
+achieve state-of-the-art performance in many tasks. Source code Wikipedia data [13] to train language models. However, there
+and pretrained models have been released.
+is limited work [1], [14] on training systems on large-scale
+Index Terms—Audio tagging, pretrained audio neural net- audio datasets, for example, the systems [1], [14] were built
+works, transfer learning. in 1-second level but not in clip level.
+A milestone for audio pattern recognition is the release
+I. INTRODUCTION of AudioSet [1], a dataset containing over 5,000 hours of
+Our world is surrounded with sounds that contain rich audio recordings with 527 sound classes in the released ver-
+information of where we are and what events are happening sion. Instead of releasing the raw audio recordings, AudioSet
+around us. Audio pattern recognition is an important research released embedding features of audio clips extracted from
+topic in machine learning and plays an important role in our a convolutional neural network [14]. Several works [15],
+life. Audio pattern recognition contains several tasks such as [16], [17], [18], [19] have investigated building systems using
+audiotagging[1],acousticsceneclassification[2],soundevent the embedding features [14]. However, those methods did
+detection [3], classifying the emotion of patients from their not work on improving systems obtaining better embedding
+speech [4], detecting the abnormal snoring of a patient [5] features. In this work, we investigate AudioSet tagging with
+and classifying heart sounds. a wide range of neural network systems trained using raw
+Audio pattern recognition has attracted increasing research audiorecordings.Weinvestigateawiderangeofconvolutional
+efforts in recent years. Early works of audio pattern recog- neural networks including [20], [21] applied on both log
+nition focused on private datasets collected by individual re- melspectrogramsandtime-domainwaveforms.Severalofour
+searchers [6], [7]. For example, Woodard [6] applied a hidden proposedsystemshaveoutperformedthepreviousstate-of-the-
+art systems for AudioSet tagging. In addition, an analysis of
+Q. Kong, Y. Cao, T. Iqbal, and M. D. Plumbley are with the Centre theperformanceandcomputationalefficiencyofaudiotagging
+for Vision, Speech and Signal Processing, University of Surrey, Guild-
+has not been done in previous works [20], [21], [14].
+ford GU2 7XH, U.K. (e-mail: q.kong@surrey.ac.uk; yin.cao@surrey.ac.uk;
+t.iqbal@surrey.ac.uk;m.plumbley@surrey.ac.uk). We call the systems trained on AudioSet pretrained audio
+This work was supported in part by the EPSRC Grant EP/N014111/1 neural networks (PANNs). Previous works have investigated
+“Making Sense of Sounds”, in part by the Research Scholarship from the
+transfer learning for audio tagging. For example, in [22],
+China Scholarship Council 201406150082, and in part by a studentship
+(Reference: 1976218) from the EPSRC Doctoral Training Partnership under systems pretrained on the Million Song Dataset were used as
+GrantEP/N509772/1.ThisworkwassupportedbyNationalNaturalScience featureextractorsforaudioclips.In[20],[23],embeddingfea-
+FoundationofChina(GrantNo.11804365)
+tures extracted from pretrained convolutional neural networks
+Y.WangiswiththeByteDanceAILab,MountainView,CA,USA(e-mail:
+wangyuxuan.11@bytedance.com). (CNNs)wereusedasinputstosecond-stageclassifierssuchas
+W. Wang is with the Centre for Vision, Speech and Signal Processing, neural networks or support vector machines (SVMs). In [24],
+University of Surrey, Guildford GU2 7XH, U.K., and also with Qingdao
+[25],systemspretrainedonMagnaTagATune[26]andacoustic
+University of Science and Technology, Qingdao 266071, China (e-mail:
+w.wang@surrey.ac.uk). scene [27] datasets were finetuned on other audio tagging
+0202
+naJ
+31
+]DS.sc[
+3v11201.2191:viXra
