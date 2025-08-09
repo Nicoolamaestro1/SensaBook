@@ -1,15 +1,15 @@
 
-import windyMountains from "../app/sounds/windy_mountains.mp3";
-import defaultAmbience from "../app/sounds/default_ambience.mp3";
-import tenseDrones from "../app/sounds/tense_drones.mp3";
-import footstepsApproaching from "../app/sounds/footsteps-approaching-316715.mp3";
-import atmosphereSound from "../app/sounds/atmosphere-sound-effect-239969.mp3";
-import thunderCity from "../app/sounds/thunder-city-377703.mp3";
-import stormyNight from "../app/sounds/stormy_night.mp3";
-import storm from "../app/sounds/storm.mp3";
-import cabinRain from "../app/sounds/cabin_rain.mp3";
-import cabin from "../app/sounds/cabin.mp3";
-import windHowl from "../app/sounds/wind.mp3";
+import windyMountains from "../app/sounds/ambience/windy_mountains.mp3";
+import defaultAmbience from "../app/sounds/ambience/default_ambience.mp3";
+import tenseDrones from "../app/sounds/ambience/tense_drones.mp3";
+import footstepsApproaching from "../app/sounds/triggers/footsteps/footsteps-approaching-316715.mp3";
+import atmosphereSound from "../app/sounds/ambience/atmosphere-sound-effect-239969.mp3";
+import thunderCity from "../app/sounds/ambience/thunder-city-377703.mp3";
+import stormyNight from "../app/sounds/ambience/stormy_night.mp3";
+import storm from "../app/sounds/triggers/storm/storm.mp3";
+import cabinRain from "../app/sounds/ambience/cabin_rain.mp3";
+import cabin from "../app/sounds/ambience/cabin.mp3";
+import windHowl from "../app/sounds/triggers/wind/wind.mp3";
 
 
 export const SOUND_MAP: Record<string, any> = {
