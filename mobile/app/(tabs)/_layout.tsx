@@ -54,7 +54,15 @@ export default function RootLayout() {
           ),
         }}
       />
-     
+      <Tabs.Screen
+        name="options"
+        options={{
+          title: "Options",
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="cog" color={color} size={size} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
