@@ -1,113 +1,42 @@
-import { Text, View, Image, StyleSheet, TouchableOpacity, Switch } from 'react-native'
-import React, { useState } from 'react'
-import { router } from 'expo-router';
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { useWpm } from "../hooks/useWpm";
+import CrossPlatformSlider from "./components/CrossPlatformSlider";
 
-export type ReadingSpeed = "slow" | "avarage" | "fast";
-export default function Option() {
-  const [developmentMode, setDevelopmentMode] = useState(true);
-  const [readingSpeed, setReadingSpeed] = useState<ReadingSpeed>("slow");
 
-  const handleBack = () => {
-    const params = [];
-    if (developmentMode) params.push("development=true");
-    if (readingSpeed) params.push(`readingSpeed=${readingSpeed}`);
-    const queryString = params.length ? `?${params.join("&")}` : "";
-    router.push(queryString ? `/library${queryString}` as `/library?${string}` : "/library");
-  }
-
-  const ReadingSpeedButton = ({ speed, onPress }: { speed: ReadingSpeed, onPress: () => void }) => {
-    return (
-      <TouchableOpacity style={[styles.button, { backgroundColor: readingSpeed === speed ? "#FFD369" : "#5AD1B3" }]} onPress={() => {
-        setReadingSpeed(speed);
-        onPress();
-      }}>
-        <Text style={styles.h4}>{speed}</Text>
-      </TouchableOpacity>
-    )
-  }
+export default function OptionsScreen() {
+  const { wpm, setWpm } = useWpm();
 
   return (
-    <View>
-      <TouchableOpacity
-        style={styles.breadcrumbs}
-        onPress={handleBack}
-      >
-        <Image source={require("../assets/images/chevron-left.svg")} />
-        <Text style={styles.h2}>Go to Library</Text>
-      </TouchableOpacity>
-      <View style={[styles.optionsWrapper, { marginTop: 48, marginBottom: 32 }]}>
-        <Text style={styles.h3}>Turn on Development mode</Text>
-        <Switch value={developmentMode} onValueChange={setDevelopmentMode} />
+    <View style={styles.container}>
+      <Text style={styles.title}>Reading speed</Text>
+      <Text style={styles.value}>{wpm} wpm</Text>
+
+      <CrossPlatformSlider
+        minimumValue={50}
+        maximumValue={600}
+        step={10}
+        value={wpm}
+        onValueChange={setWpm}
+        style={{ width: "100%", height: 40 }}
+        minimumTrackTintColor="#5b4636"
+        maximumTrackTintColor="#ccc"
+        thumbTintColor="#5b4636"
+      />
+
+      <View style={styles.scale}>
+        <Text>50</Text>
+        <Text>600</Text>
       </View>
-      <Text style={[styles.h3, { marginTop: 24, marginBottom: 12, textAlign: "center" }]}>
-        Choose reading speed
-      </Text>
-      <View style={styles.buttonsWrapper}>
-        <ReadingSpeedButton speed="slow" onPress={() => setReadingSpeed("slow")} />
-        <ReadingSpeedButton speed="avarage" onPress={() => setReadingSpeed("avarage")} />
-        <ReadingSpeedButton speed="fast" onPress={() => setReadingSpeed("fast")} />
-      </View>
+      <Text style={styles.hint}>Tip: 180–250 wpm is comfy for most people.</Text>
     </View>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
-  h2: {
-    fontFamily: "Montserrat_700Bold",
-    fontWeight: "700",
-    fontSize: 14,
-    letterSpacing: 0,
-    textAlign: "center",
-    color: "white",
-    marginLeft: "auto",
-    marginRight: "auto",
-  },
-  h3: {
-    fontFamily: "Montserrat_400Regular",
-    fontWeight: "400",
-    fontSize: 14,
-    letterSpacing: 0,
-    color: "white",
-  },
-  h4: {
-    fontFamily: "Montserrat_400Regular",
-    fontWeight: "400",
-    fontSize: 14,
-    letterSpacing: 0,
-    textAlign: "center",
-    color: "#0A0414",
-  },
-  breadcrumbs: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginLeft: 20,
-    marginRight: 20,
-    marginTop: 20,
-    marginBottom: 20,
-  },
-  optionsWrapper: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginLeft: 20,
-    marginRight: 20,
-  },
-  buttonsWrapper: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginLeft: 20,
-    marginRight: 20,
-  },
-  button: {
-    backgroundColor: "#5AD1B3",
-    padding: 10,
-    borderRadius: 19,
-    flex: 1,
-    height: 38,
-    justifyContent: "center",
-    alignItems: "center",
-    marginHorizontal: 4,
-  },
+  container: { flex: 1, padding: 20, justifyContent: "center" },
+  title: { fontSize: 18, fontWeight: "600", marginBottom: 8, color: "#5b4636" },
+  value: { fontSize: 24, fontWeight: "700", marginBottom: 12, color: "#fff" },
+  scale: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 },
+  hint: { marginTop: 16, color: "#777" },
 });
