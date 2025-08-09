@@ -1,11 +1,11 @@
 import React from "react";
-import { useLocalSearchParams, useFocusEffect } from "expo-router";
+import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, AppState } from "react-native";
 import { ProgressBar } from "react-native-paper";
 import { Dimensions } from "react-native";
 import SoundManager from "../utils/soundManager";
-import { useRouter } from "expo-router";
-const { height, width } = Dimensions.get("window");
+import { useBook } from "../../hooks/useBooks";
+import { ReadingSpeed } from "../options";
 
 import windyMountains from "../sounds/windy_mountains.mp3";
 import defaultAmbience from "../sounds/default_ambience.mp3";
@@ -19,8 +19,7 @@ import cabinRain from "../sounds/cabin_rain.mp3";
 import cabin from "../sounds/cabin.mp3";
 import windHowl from "../sounds/wind.mp3";
 
-import { useBook } from "../../hooks/useBooks";
-import { ReadingSpeed } from "../options";
+const { height, width } = Dimensions.get("window");
 
 const SOUND_MAP: Record<string, any> = {
   "windy_mountains.mp3": windyMountains,
@@ -57,18 +56,23 @@ interface TriggerWord {
 }
 
 export default function BookDetailScreen() {
-  const { bookId, readingSpeed: readingSpeedParam, development: isDevelopmentMode } = useLocalSearchParams();
-  const [currentChapterIndex, setCurrentChapterIndex] = React.useState(0);
-  const [currentPageIndex, setCurrentPageIndex] = React.useState(0);
-  const [currentChunkIndex, setCurrentChunkIndex] = React.useState(0);
+  // ---- URL-based navigation state ----
+  const params = useLocalSearchParams();
+  const router = useRouter();
+
+  // Initial state from URL (on first render), always numbers
+  const [currentChapterIndex, setCurrentChapterIndex] = React.useState(Number(params.chapter ?? 0));
+  const [currentPageIndex, setCurrentPageIndex] = React.useState(Number(params.page ?? 0));
+  const [currentChunkIndex, setCurrentChunkIndex] = React.useState(Number(params.chunk ?? 0));
   const [paginatedChunks, setPaginatedChunks] = React.useState<string[]>([]);
   const [triggerWords, setTriggerWords] = React.useState<TriggerWord[]>([]);
   const [activeTriggerWords, setActiveTriggerWords] = React.useState<Set<string>>(new Set());
-  const router = useRouter();
   const [activeWordIndex, setActiveWordIndex] = React.useState<number | null>(null);
 
   const wordIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
 
+  // Your data
+  const { bookId, readingSpeed: readingSpeedParam } = params;
   const { book, loading } = useBook(bookId as string) as {
     book: any;
     loading: boolean;
@@ -80,6 +84,24 @@ export default function BookDetailScreen() {
     wind: windHowl,
     storm: storm,
   };
+
+  // --- Keep position in URL (write to params on every change) ---
+  React.useEffect(() => {
+    router.setParams({
+      chapter: String(currentChapterIndex),
+      page: String(currentPageIndex),
+      chunk: String(currentChunkIndex)
+    });
+    // eslint-disable-next-line
+  }, [currentChapterIndex, currentPageIndex, currentChunkIndex]);
+
+  // --- If route param changes externally, update state (for back/forward buttons) ---
+  React.useEffect(() => {
+    if (params.chapter !== undefined) setCurrentChapterIndex(Number(params.chapter));
+    if (params.page !== undefined) setCurrentPageIndex(Number(params.page));
+    if (params.chunk !== undefined) setCurrentChunkIndex(Number(params.chunk));
+    // eslint-disable-next-line
+  }, [params.chapter, params.page, params.chunk]);
 
   // Paginates the text for the book screen
   const paginateText = (text: string, fontSize = 16, lineHeight = 24) => {
@@ -103,6 +125,7 @@ export default function BookDetailScreen() {
     "avarage": 200,
     "fast": 300,
   }
+
   // Calculates ms per word (reading speed)
   const calculateWordTiming = (text: string) => {
     if (!text) return { words: [], msPerWord: 333 };
@@ -116,7 +139,6 @@ export default function BookDetailScreen() {
   const findTriggerWords = (text: string) => {
     const { words, msPerWord } = calculateWordTiming(text);
     const found: TriggerWord[] = [];
-
     words.forEach((word, index) => {
       const clean = word.toLowerCase().replace(/[^\w]/g, "");
       if (TRIGGER_WORDS[clean]) {
@@ -155,7 +177,7 @@ export default function BookDetailScreen() {
       setActiveWordIndex((prev) => {
         const currentIdx = prev === null ? 0 : prev + 1;
 
-        // CHECK IF THIS IS A TRIGGER WORD
+        // Check if this is a trigger word
         const trigger = triggerWords.find(t => t.position === currentIdx);
         if (trigger && !activeTriggerWords.has(trigger.id)) {
           setActiveTriggerWords(prevSet => {
@@ -212,38 +234,34 @@ export default function BookDetailScreen() {
     }
     if (currentPageIndex < totalPages - 1) {
       setCurrentPageIndex(currentPageIndex + 1);
+      setCurrentChunkIndex(0);
     } else if (currentChapterIndex < totalChapters - 1) {
       setCurrentChapterIndex(currentChapterIndex + 1);
       setCurrentPageIndex(0);
+      setCurrentChunkIndex(0);
     }
   };
 
   // Go to previous page or chunk
   const goToPreviousPage = () => {
     stopReadingTimer();
-
-    // Check if we are at the very beginning of the book
-    if (
-      currentChapterIndex === 0 &&
-      currentPageIndex === 0 &&
-      currentChunkIndex === 0
-    ) {
-      // Go back to library or previous screen
-      router.back(); // or router.replace("/library")
+    if (currentChapterIndex === 0 && currentPageIndex === 0 && currentChunkIndex === 0) {
+      router.replace("/library");
       return;
     }
-
     if (currentChunkIndex > 0) {
       setCurrentChunkIndex(currentChunkIndex - 1);
       return;
     }
     if (currentPageIndex > 0) {
       setCurrentPageIndex(currentPageIndex - 1);
+      setCurrentChunkIndex(0);
     } else if (currentChapterIndex > 0) {
       const prevChapter = book?.chapters?.[currentChapterIndex - 1];
       const lastPageIndex = (prevChapter?.pages?.length || 1) - 1;
       setCurrentChapterIndex(currentChapterIndex - 1);
       setCurrentPageIndex(lastPageIndex);
+      setCurrentChunkIndex(0);
     }
   };
 
@@ -294,21 +312,25 @@ export default function BookDetailScreen() {
 
   // When paginatedChunks or chunkIndex changes, find trigger words and load soundscape, and start reading when all is ready
   React.useEffect(() => {
-    if (paginatedChunks.length > 0) {
+    if (
+      book && 
+      book.chapters?.[currentChapterIndex]?.pages?.[currentPageIndex] &&
+      paginatedChunks.length > 0
+    ) {
       const chunk = paginatedChunks[currentChunkIndex];
       setTriggerWords(findTriggerWords(chunk));
       loadSoundscapeForPage(currentChapterIndex, currentPageIndex);
+      startReadingTimer();
     }
     // eslint-disable-next-line
-  }, [paginatedChunks, currentChunkIndex]);
+  }, [book, currentChapterIndex, currentPageIndex, currentChunkIndex, paginatedChunks.length]);
 
   // When triggerWords change, start reading timer
   React.useEffect(() => {
     if (paginatedChunks.length > 0 && triggerWords) {
       startReadingTimer();
     }
-    // eslint-disable-next-line
-  }, [triggerWords]);
+  }, [triggerWords, paginatedChunks, currentChunkIndex, currentChapterIndex, currentPageIndex]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -340,16 +362,17 @@ export default function BookDetailScreen() {
   const renderTextWithHighlights = (text: string) => {
     const words = text.split(/\s+/).filter(Boolean);
     return (
-      <Text style={styles.pageText}>
+     <Text style={styles.pageText}>
         {words.map((word, index) => {
+          const clean = word.toLowerCase().replace(/[^\w]/g, "");
+          const trigger = triggerWords.find(t => t.position === index);
           const isActiveTrigger = activeTriggerWords.has(`${index}`);
           const isActiveReading = activeWordIndex === index;
 
           let style = undefined;
-          if(isDevelopmentMode) {
-            if (isActiveTrigger) style =  styles.triggerHighlight;
-            else if (isActiveReading) style = styles.wordBorderHighlight;
-          }
+          if (isActiveTrigger) style = styles.triggerHighlight;
+          else if (isActiveReading) style = styles.wordBorderHighlight;
+
           return (
             <Text key={index} style={style}>
               {word}{index !== words.length - 1 ? " " : ""}
@@ -394,19 +417,9 @@ export default function BookDetailScreen() {
           {currentPageInBook} of {totalPagesInBook} pages
         </Text>
       </View>
-
       <View style={styles.container}>
-        <TouchableOpacity
-          style={styles.leftTouchable}
-          onPress={goToPreviousPage}
-          activeOpacity={1}
-        />
-        <TouchableOpacity
-          style={styles.rightTouchable}
-          onPress={goToNextPage}
-          activeOpacity={1}
-        />
-
+        <TouchableOpacity style={styles.leftTouchable} onPress={goToPreviousPage} activeOpacity={1} />
+        <TouchableOpacity style={styles.rightTouchable} onPress={goToNextPage} activeOpacity={1} />
         <View style={styles.pageCard}>
           <Text style={styles.chapterTitle}>
             {currentChapter?.title
@@ -417,7 +430,6 @@ export default function BookDetailScreen() {
             {renderTextWithHighlights(paginatedChunks[currentChunkIndex] || "")}
           </Text>
         </View>
-
         <View style={styles.pageInfo}>
           <Text style={styles.pageInfoText}>
             {currentChapterIndex + 1}/{totalChapters} • {currentPageIndex + 1}/{totalPages}
@@ -475,9 +487,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   wordBorderHighlight: {
-    borderColor: "#5b4636",
-    borderWidth: 1,
-    borderRadius: 4,
+    textDecorationLine: "underline",
     padding: 2,
   },
 });
