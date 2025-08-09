@@ -7,66 +7,21 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   AppState,
+  Dimensions
 } from "react-native";
 import { ProgressBar } from "react-native-paper";
-import { Dimensions } from "react-native";
 import Animated, {
   useSharedValue,
   withTiming,
   useAnimatedStyle,
 } from "react-native-reanimated";
-
 import SoundManager from "../utils/soundManager";
 import { useBook } from "../../hooks/useBooks";
 import { useWpm } from "../../hooks/useWpm";
-import windyMountains from "../sounds/windy_mountains.mp3";
-import defaultAmbience from "../sounds/default_ambience.mp3";
-import tenseDrones from "../sounds/tense_drones.mp3";
-import footstepsApproaching from "../sounds/footsteps-approaching-316715.mp3";
-import atmosphereSound from "../sounds/atmosphere-sound-effect-239969.mp3";
-import thunderCity from "../sounds/thunder-city-377703.mp3";
-import stormyNight from "../sounds/stormy_night.mp3";
-import storm from "../sounds/storm.mp3";
-import cabinRain from "../sounds/cabin_rain.mp3";
-import cabin from "../sounds/cabin.mp3";
-import windHowl from "../sounds/wind.mp3";
+
+import { WORD_TRIGGERS, TriggerWord, SOUND_MAP } from "../../constants/sounds";
 import CrossPlatformSlider from "../components/CrossPlatformSlider";
-
 const { height, width } = Dimensions.get("window");
-
-const SOUND_MAP: Record<string, any> = {
-  "windy_mountains.mp3": windyMountains,
-  "default_ambience.mp3": defaultAmbience,
-  "tense_drones.mp3": tenseDrones,
-  "footsteps-approaching-316715.mp3": footstepsApproaching,
-  "atmosphere-sound-effect-239969.mp3": atmosphereSound,
-  "thunder-city-377703.mp3": thunderCity,
-  "stormy_night.mp3": stormyNight,
-  "storm.mp3": storm,
-  "cabin_rain.mp3": cabinRain,
-  "cabin.mp3": cabin,
-  "restaurant_murmur.mp3": atmosphereSound,
-  "hotel_lobby.mp3": atmosphereSound,
-  "quiet_museum.mp3": defaultAmbience,
-  "horse_carriage.mp3": footstepsApproaching,
-  "stone_echoes.mp3": tenseDrones,
-  "night_forest.mp3": windyMountains,
-  "indoors.mp3": cabinRain,
-  "inside.mp3": cabinRain,
-  "house.mp3": cabinRain,
-  "room.mp3": cabinRain,
-  "building.mp3": cabinRain,
-  "apartment.mp3": cabinRain,
-  "home.mp3": cabinRain,
-  "wind.mp3": windHowl,
-};
-
-interface TriggerWord {
-  id: string;
-  word: string;
-  position: number;
-  timing: number;
-}
 
 export default function BookDetailScreen() {
   // ---- URL-based navigation state ----
@@ -135,12 +90,7 @@ export default function BookDetailScreen() {
     translateY.value = optionsOpen ? 0 : -300;
   }, [optionsOpen, translateY]);
 
-  const TRIGGER_WORDS: Record<string, any> = {
-    thunder: thunderCity,
-    footsteps: footstepsApproaching,
-    wind: windHowl,
-    storm: storm,
-  };
+
 
   // --- Keep position in URL (write to params on every change) ---
   React.useEffect(() => {
@@ -190,7 +140,7 @@ export default function BookDetailScreen() {
     const found: TriggerWord[] = [];
     words.forEach((word, index) => {
       const clean = word.toLowerCase().replace(/[^\w]/g, "");
-      if (TRIGGER_WORDS[clean]) {
+      if (WORD_TRIGGERS[clean]) {
         found.push({
           id: `${index}`,
           word: clean,
@@ -242,7 +192,7 @@ export default function BookDetailScreen() {
             return s;
           });
 
-          SoundManager.playTrigger(TRIGGER_WORDS[trig.word]).finally(() => {
+          SoundManager.playTrigger(WORD_TRIGGERS[trig.word]).finally(() => {
             setActiveTriggerWords((prevSet) => {
               const s = new Set(prevSet);
               s.delete(trig.id);
