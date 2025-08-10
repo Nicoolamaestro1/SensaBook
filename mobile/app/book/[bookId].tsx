@@ -45,9 +45,7 @@ async function fetchSoundscape(
   chapterNumber: number,
   pageNumber: number
 ): Promise<SoundscapeResponse> {
-  console.log(
-    `Fetching soundscape: ${API_BASE}/book/${bookId}/chapter/${chapterNumber}/page/${pageNumber}`
-  );
+  console.log(`Fetching soundscape: ${API_BASE}/book/${bookId}`);
   const res = await fetch(
     `${API_BASE}/book/${bookId}/chapter/${chapterNumber}/page/${pageNumber}`
   );
@@ -101,6 +99,12 @@ export default function BookDetailScreen() {
     book: any;
     loading: boolean;
   };
+
+  React.useEffect(() => {
+    if (book) {
+      console.log("📚 Current book data:", JSON.stringify(book, null, 2));
+    }
+  }, [book]);
 
   const [optionsOpen, setOptionsOpen] = React.useState(false);
   const translateY = useSharedValue(-200);

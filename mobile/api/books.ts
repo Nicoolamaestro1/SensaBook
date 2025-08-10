@@ -19,7 +19,7 @@ export const fetchSoundscape = async (
   chapterNumber: number,
   pageNumber: number
 ) => {
-  const url = `${SOUNDSCAPE_URL}/book/${bookId}/chapter/${chapterNumber}/page/${pageNumber}`;
+  const url = `${SOUNDSCAPE_URL}/book/${bookId}`;
   console.log("🔗 Fetching Soundscape from:", url);
 
   const res = await fetch(url);
