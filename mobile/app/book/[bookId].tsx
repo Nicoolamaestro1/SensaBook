@@ -312,6 +312,39 @@ export default function BookDetailScreen() {
     return undefined;
   }
 
+  // Normalize a token the same way everywhere
+  function norm(w: string) {
+    return w.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ""); // letters+digits, Unicode-safe
+  }
+
+  // Split text into tokens (client-side reference tokenization)
+  function tokenize(text: string) {
+    return text.split(/\s+/).filter(Boolean);
+  }
+
+  // Find the nearest token index around an approximate position whose normalized form matches target
+  function snapToNearestToken(
+    tokens: string[],
+    targetWord: string,
+    approxIdx: number,
+    window = 2
+  ) {
+    const target = norm(targetWord);
+    // exact hit first
+    if (tokens[approxIdx] && norm(tokens[approxIdx]) === target)
+      return approxIdx;
+
+    // search a small window around the guess to correct off-by-one/two
+    for (let delta = 1; delta <= window; delta++) {
+      const left = approxIdx - delta;
+      const right = approxIdx + delta;
+      if (left >= 0 && norm(tokens[left] || "") === target) return left;
+      if (right < tokens.length && norm(tokens[right] || "") === target)
+        return right;
+    }
+    return approxIdx; // fallback: leave as-is
+  }
+
   const loadSoundscapeForPage = async (
     chapterIndex?: number,
     pageIndex?: number
@@ -341,28 +374,37 @@ export default function BookDetailScreen() {
       );
 
       // how many words come BEFORE the current chunk? (to shift absolute → chunk positions)
+      const chunkText = paginatedChunks[currentChunkIndex] || "";
+      const chunkTokens = tokenize(chunkText);
+
+      // how many words before this chunk (so we can convert absolute -> chunk index)
       const wordsBeforeThisChunk = paginatedChunks
         .slice(0, currentChunkIndex)
-        .reduce((sum, ch) => sum + ch.split(/\s+/).filter(Boolean).length, 0);
+        .reduce((sum, ch) => sum + tokenize(ch).length, 0);
 
-      const thisChunkWordCount =
-        paginatedChunks[currentChunkIndex]?.split(/\s+/).filter(Boolean)
-          .length ?? Number.MAX_SAFE_INTEGER;
-
-      // map API triggers → your TriggerWord[], aligned to current chunk
+      // Map API triggers -> client triggers, then SNAP indexes
       const chunkTriggers: TriggerWord[] = (data.triggered_sounds || [])
         .map((t: any, i: number) => {
           const absolutePos = Number(t.word_position ?? t.position ?? 0);
-          const posInChunk = absolutePos - wordsBeforeThisChunk;
+          const approxInChunk = absolutePos - wordsBeforeThisChunk;
+
+          // snap to the nearest real token that matches "storm", "wind", etc.
+          const snapped = snapToNearestToken(
+            chunkTokens,
+            String(t.word || ""),
+            approxInChunk,
+            2
+          );
+
           return {
             id: String(i),
             word: String(t.word || "").toLowerCase(),
-            position: posInChunk,
-            timing: 0, // timing comes from your WPM loop
-            soundKey: resolveSoundKey(t.sound), // 🔑 carry the exact file if available
+            position: snapped,
+            timing: 0,
+            soundKey: resolveSoundKey(t.sound), // keep your resolver
           };
         })
-        .filter((t) => t.position >= 0 && t.position < thisChunkWordCount);
+        .filter((t) => t.position >= 0 && t.position < chunkTokens.length);
 
       // swap in server triggers + restart reader using them
       setTriggerWords(chunkTriggers);
