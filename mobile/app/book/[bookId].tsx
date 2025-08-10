@@ -254,8 +254,7 @@ export default function BookDetailScreen() {
     const pi = pageIndex ?? currentPageIndex;
     const page = book?.chapters?.[ci]?.pages?.[pi];
 
-    await SoundManager.stopCarpet();
-
+    // Decide ambience key for this page
     let ambienceKey = page?.ambient as string;
     if (!ambienceKey) {
       const pageAmbienceMap: Record<string, string> = {
@@ -267,9 +266,10 @@ export default function BookDetailScreen() {
     }
 
     const asset = SOUND_MAP[ambienceKey];
-    if (asset) {
-      await SoundManager.playCarpet(asset);
-    }
+    if (!asset) return;
+
+    // Pass key to SoundManager so it only reloads if different
+    await SoundManager.playCarpet(SOUND_MAP[ambienceKey], ambienceKey);
   };
 
   React.useEffect(() => {
