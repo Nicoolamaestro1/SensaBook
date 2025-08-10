@@ -1614,12 +1614,13 @@ def get_random_sound_from_folder(folder_path: str) -> str:
 def find_trigger_words(text: str) -> List[Dict]:
     """
     Advanced regex-based trigger word detection with folder-based sound pools.
+    Enhanced to provide both character and word positions for frontend synchronization.
     
     Args:
         text: The text to analyze
         
     Returns:
-        List of dictionaries with word/phrase, sound, and timing information
+        List of dictionaries with word/phrase, sound, timing, and position information
     """
     if not text:
         return []
@@ -1658,6 +1659,9 @@ def find_trigger_words(text: str) -> List[Dict]:
                     progress_ratio = start_pos / len(text)
                     timing = progress_ratio * estimated_reading_time_seconds
                     
+                    # Calculate word position for frontend synchronization
+                    word_position = _calculate_word_position(text, start_pos)
+                    
                     # Get random sound from folder
                     selected_sound = get_random_sound_from_folder(pattern_data["sound_folder"])
                     
@@ -1665,10 +1669,13 @@ def find_trigger_words(text: str) -> List[Dict]:
                         "word": match.group(),
                         "sound": selected_sound,
                         "timing": timing,
-                        "position": start_pos,
+                        "position": start_pos,  # Character position in text
+                        "word_position": word_position,  # Word position (0-indexed)
+                        "word_count": len(words),  # Total words in text
                         "type": "regex_pattern",
                         "pattern_name": pattern_name,
-                        "folder_path": pattern_data["sound_folder"]
+                        "folder_path": pattern_data["sound_folder"],
+                        "context": _get_word_context(text, start_pos, end_pos)  # Surrounding context
                     })
                     
                     # Mark this position as used
@@ -1677,4 +1684,51 @@ def find_trigger_words(text: str) -> List[Dict]:
     # Sort by timing
     trigger_words.sort(key=lambda x: x["timing"])
     
-    return trigger_words 
+    return trigger_words
+
+def _calculate_word_position(text: str, char_position: int) -> int:
+    """
+    Calculate the word position (0-indexed) for a given character position.
+    
+    Args:
+        text: The full text
+        char_position: Character position in the text
+        
+    Returns:
+        Word position (0-indexed)
+    """
+    if char_position >= len(text):
+        return 0
+    
+    # Count words up to the character position
+    text_before = text[:char_position]
+    words_before = text_before.split()
+    return len(words_before)
+
+def _get_word_context(text: str, start_pos: int, end_pos: int, context_chars: int = 50) -> str:
+    """
+    Get surrounding context for a trigger word.
+    
+    Args:
+        text: The full text
+        start_pos: Start position of the trigger word
+        end_pos: End position of the trigger word
+        context_chars: Number of characters to include before and after
+        
+    Returns:
+        Context string with the trigger word highlighted
+    """
+    # Calculate context boundaries
+    context_start = max(0, start_pos - context_chars)
+    context_end = min(len(text), end_pos + context_chars)
+    
+    # Extract context
+    context = text[context_start:context_end]
+    
+    # Add ellipsis if we're not at the beginning/end
+    if context_start > 0:
+        context = "..." + context
+    if context_end < len(text):
+        context = context + "..."
+    
+    return context
