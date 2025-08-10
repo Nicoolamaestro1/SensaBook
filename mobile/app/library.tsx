@@ -1,16 +1,26 @@
-import * as React from 'react';
-import { View, Image, StyleSheet, FlatList, Dimensions, TouchableOpacity, Text, ActivityIndicator, TextInput } from 'react-native';
-import { Href, useRouter, useLocalSearchParams } from 'expo-router';
-import { useFocusEffect } from 'expo-router';
-import { Audio } from 'expo-av';
-import { useBooks } from '../hooks/useBooks';
+import * as React from "react";
+import {
+  View,
+  Image,
+  StyleSheet,
+  FlatList,
+  Dimensions,
+  TouchableOpacity,
+  Text,
+  ActivityIndicator,
+  TextInput,
+} from "react-native";
+import { Href, useRouter, useLocalSearchParams } from "expo-router";
+import { useFocusEffect } from "expo-router";
+import { Audio } from "expo-av";
+import { useBooks } from "../hooks/useBooks";
 import SoundManager from "./utils/soundManager";
 
 const { width } = Dimensions.get("window");
 
 export default function LibraryScreen() {
   const router = useRouter();
-  const { books, loading } = useBooks() as { books: any[], loading: boolean };
+  const { books, loading } = useBooks() as { books: any[]; loading: boolean };
   const { readingSpeed, development } = useLocalSearchParams();
   const [searchQuery, setSearchQuery] = React.useState("");
 
@@ -28,72 +38,77 @@ export default function LibraryScreen() {
     if (development) params.push(`development=${development}`);
     const queryString = params.length ? `?${params.join("&")}` : "";
     router.push(`/book/${bookId}${queryString}`);
-  }
-
+  };
 
   // Filter books
-  const filteredBooks = books.filter((book) =>
-    book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    book.author.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredBooks = books.filter(
+    (book) =>
+      book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      book.author.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <>
-    {/* Search Input */}
-    <View style={styles.searchInputHolder}>
-      <Text style={styles.searchText}>Find a Book to Dive Into</Text>
-      <TextInput
-        style={styles.searchInput}
-        placeholder=""
-        placeholderTextColor="#888"
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        autoCorrect={false}
-        autoCapitalize="none"
-      />
-    </View>
-    <View style={styles.container}>
-      {loading ? (
-        <ActivityIndicator style={{ marginTop: 24 }} size="large" color="#2563eb" />
-      ) : (
-        <FlatList
-          contentContainerStyle={styles.row}
-          data={filteredBooks}
-          keyExtractor={(item) => item.id.toString()}
-          numColumns={3}
-          renderItem={({ item }) => (
-            <View style={[styles.cardWrapper, { flex: 1 / 3 }]}>
-              <TouchableOpacity
-                style={styles.card}
-                onPress={() => handleBookPress(item.id)}
-                activeOpacity={0.85}
-              >
-                {item.cover_url ? (
-                  <Image
-                    source={{ uri: item.cover_url }}
-                    style={styles.cardImage}
-                    resizeMode="cover"
-                  />
-                ) : null}
-                <Text style={styles.cardSubtitle}>{item.author}</Text>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          ListEmptyComponent={
-            <Text style={{ textAlign: 'center', color: "#fff", marginTop: 16 }}>
-              No books found.
-            </Text>
-          }
+      {/* Search Input */}
+      <View style={styles.searchInputHolder}>
+        <Text style={styles.searchText}>Find a Book to Dive Into</Text>
+        <TextInput
+          style={styles.searchInput}
+          placeholder=""
+          placeholderTextColor="#888"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          autoCorrect={false}
+          autoCapitalize="none"
         />
-      )}
-    </View>
+      </View>
+      <View style={styles.container}>
+        {loading ? (
+          <ActivityIndicator
+            style={{ marginTop: 24 }}
+            size="large"
+            color="#2563eb"
+          />
+        ) : (
+          <FlatList
+            contentContainerStyle={styles.row}
+            data={filteredBooks}
+            keyExtractor={(item) => item.id.toString()}
+            numColumns={3}
+            renderItem={({ item }) => (
+              <View style={[styles.cardWrapper, { flex: 1 / 3 }]}>
+                <TouchableOpacity
+                  style={styles.card}
+                  onPress={() => handleBookPress(item.id)}
+                  activeOpacity={0.85}
+                >
+                  {item.cover_url ? (
+                    <Image
+                      source={{ uri: item.cover_url }}
+                      style={styles.cardImage}
+                      resizeMode="cover"
+                    />
+                  ) : null}
+                  <Text style={styles.cardSubtitle}>{item.author}</Text>
+                  <Text style={styles.cardTitle}>{item.title}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            ListEmptyComponent={
+              <Text
+                style={{ textAlign: "center", color: "#fff", marginTop: 16 }}
+              >
+                No books found.
+              </Text>
+            }
+          />
+        )}
+      </View>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-
   container: {
     flex: 1,
     alignSelf: "center",
@@ -102,7 +117,7 @@ const styles = StyleSheet.create({
   },
   searchInputHolder: {
     paddingHorizontal: 16,
-    marginTop: 20
+    marginTop: 20,
   },
   searchInput: {
     width: "100%",
@@ -136,7 +151,6 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   card: {
-    height: "100%",
     borderRadius: 12,
     padding: 0,
     shadowOpacity: 0.1,
@@ -161,6 +175,5 @@ const styles = StyleSheet.create({
     marginBottom: 0,
     textAlign: "left",
     fontFamily: "Montserrat_300Light",
-
   },
 });

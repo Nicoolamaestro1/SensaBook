@@ -1,4 +1,3 @@
-
 import windyMountains from "../app/sounds/ambience/windy_mountains.mp3";
 import defaultAmbience from "../app/sounds/ambience/default_ambience.mp3";
 import tenseDrones from "../app/sounds/ambience/tense_drones.mp3";
@@ -10,7 +9,6 @@ import storm from "../app/sounds/triggers/storm/storm.mp3";
 import cabinRain from "../app/sounds/ambience/cabin_rain.mp3";
 import cabin from "../app/sounds/ambience/cabin.mp3";
 import windHowl from "../app/sounds/triggers/wind/wind.mp3";
-
 
 export const SOUND_MAP: Record<string, any> = {
   "windy_mountains.mp3": windyMountains,
@@ -52,4 +50,3 @@ export type TriggerWord = {
   position: number;
   timing: number;
 };
-
