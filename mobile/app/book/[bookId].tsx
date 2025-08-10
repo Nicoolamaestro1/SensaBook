@@ -27,7 +27,7 @@ const API_HOST =
     ? "http://10.0.2.2:8000" // Android emulator -> host machine
     : "http://127.0.0.1:8000"; // iOS sim / mac
 
-const API_BASE = `${API_HOST}/api/soundscape`;
+const API_BASE = `${API_HOST}/soundscape`;
 
 type SoundscapeResponse = {
   book_id: number;
@@ -45,9 +45,11 @@ async function fetchSoundscape(
   chapterNumber: number,
   pageNumber: number
 ): Promise<SoundscapeResponse> {
-  console.log(`Fetching soundscape: ${API_BASE}/book/${bookId}`);
+  console.log(
+    `Fetching soundscape: ${API_BASE}/book/${bookId}/chapter${chapterNumber}/page/${pageNumber}`
+  );
   const res = await fetch(
-    `${API_BASE}/book/${bookId}/chapter/${chapterNumber}/page/${pageNumber}`
+    `${API_BASE}/book/${bookId}/chapter${chapterNumber}/page/${pageNumber}`
   );
   if (!res.ok) {
     throw new Error(`soundscape ${res.status}`);
@@ -99,14 +101,6 @@ export default function BookDetailScreen() {
     book: any;
     loading: boolean;
   };
-
-  React.useEffect(() => {
-    if (book) {
-      console.log("📚 Current book:", JSON.stringify(book, null, 2));
-      console.log("📄 Current chapter index:", currentChapterIndex);
-      console.log("📄 Current page index:", currentPageIndex);
-    }
-  }, [book, currentChapterIndex, currentPageIndex]);
 
   const [optionsOpen, setOptionsOpen] = React.useState(false);
   const translateY = useSharedValue(-200);
@@ -290,38 +284,42 @@ export default function BookDetailScreen() {
     chapterIndex?: number,
     pageIndex?: number
   ) => {
+    if (!book) throw new Error("no book");
+
     const ci = chapterIndex ?? currentChapterIndex;
     const pi = pageIndex ?? currentPageIndex;
 
-    // try server first
+    // ✅ Pull actual chapter/page numbers from book data
+    const chapterNumber = book.chapters?.[ci]?.chapter_number ?? ci + 1;
+    const pageNumber = book.chapters?.[ci]?.pages?.[pi]?.page_number ?? pi + 1;
+
+    console.log("📡 Sending to API:", {
+      bookId,
+      chapterNumber,
+      pageNumber,
+      ci,
+      pi,
+    });
+
     try {
-      if (!book) throw new Error("no book");
-      const data = await fetchSoundscape(bookId as string, ci, pi);
+      const data = await fetchSoundscape(
+        bookId as string,
+        chapterNumber,
+        pageNumber
+      );
 
       // pick first recommended carpet
       const first = data.carpet_tracks?.[0];
       if (first && SOUND_MAP[first]) {
         await SoundManager.playCarpet(SOUND_MAP[first], first);
-
-        // OPTIONAL: use server-provided triggers instead of local detection
-        // setTriggerWords(
-        //   data.triggered_sounds.map((t, i) => ({
-        //     id: String(i),
-        //     word: t.word.toLowerCase(),
-        //     position: t.position,
-        //     timing: 0, // you can recompute using your msPerWord
-        //   }))
-        // );
-
-        return; // success via API, stop here
+        return; // success via API
       }
     } catch (err) {
-      // silent fallback below
-      // console.log("Soundscape API fallback:", err);
+      console.log("Soundscape API fallback:", err);
     }
 
-    // --- fallback to your local mapping if API fails or returns unknown file ---
-    const page = book?.chapter?.[ci]?.pages?.[pi];
+    // --- fallback local mapping ---
+    const page = book?.chapters?.[ci]?.pages?.[pi];
     let ambienceKey = page?.ambient as string;
 
     if (!ambienceKey) {
@@ -334,9 +332,9 @@ export default function BookDetailScreen() {
     }
 
     const asset = SOUND_MAP[ambienceKey];
-    if (!asset) return;
-
-    await SoundManager.playCarpet(asset, ambienceKey);
+    if (asset) {
+      await SoundManager.playCarpet(asset, ambienceKey);
+    }
   };
 
   React.useEffect(() => {
