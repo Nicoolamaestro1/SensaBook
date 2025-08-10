@@ -24,11 +24,9 @@ import CrossPlatformSlider from "../components/CrossPlatformSlider";
 const { height, width } = Dimensions.get("window");
 
 export default function BookDetailScreen() {
-  // ---- URL-based navigation state ----
   const params = useLocalSearchParams();
   const router = useRouter();
 
-  // Initial state from URL (on first render), always numbers
   const [currentChapterIndex, setCurrentChapterIndex] = React.useState(
     Number(params.chapter ?? 0)
   );
@@ -50,39 +48,26 @@ export default function BookDetailScreen() {
 
   const { wpm, setWpm } = useWpm();
 
-  // Latest WPM always available to the timer
   const wpmRef = React.useRef(wpm);
   React.useEffect(() => {
     wpmRef.current = wpm;
   }, [wpm]);
 
-  // Single source of truth for current word index (used by the timer)
-  const currentIdxRef = React.useRef<number>(0);
-  React.useEffect(() => {
-    if (activeWordIndex !== null) currentIdxRef.current = activeWordIndex;
-  }, [activeWordIndex]);
-
-  // index we’re currently on (single source of truth for resume)
   const currentWordIndexRef = React.useRef(0);
   React.useEffect(() => {
     if (activeWordIndex != null) currentWordIndexRef.current = activeWordIndex;
   }, [activeWordIndex]);
 
-  // Track which triggers have fired (ref, not state) – optional
   const firedTriggerIdsRef = React.useRef<Set<string>>(new Set());
-
-  // Timer handle (recursive setTimeout)
   type TimeoutId = ReturnType<typeof setTimeout>;
   const wordTimeoutRef = React.useRef<TimeoutId | null>(null);
 
-  // Your data
   const { bookId } = params;
   const { book, loading } = useBook(bookId as string) as {
     book: any;
     loading: boolean;
   };
 
-  // --- Kindle-style options dropdown ---
   const [optionsOpen, setOptionsOpen] = React.useState(false);
   const translateY = useSharedValue(-200);
   const optionsAnim = useAnimatedStyle(() => ({
@@ -94,26 +79,21 @@ export default function BookDetailScreen() {
     translateY.value = optionsOpen ? 0 : -300;
   }, [optionsOpen, translateY]);
 
-  // --- Keep position in URL (write to params on every change) ---
   React.useEffect(() => {
     router.setParams({
       chapter: String(currentChapterIndex),
       page: String(currentPageIndex),
       chunk: String(currentChunkIndex),
     });
-    // eslint-disable-next-line
   }, [currentChapterIndex, currentPageIndex, currentChunkIndex]);
 
-  // --- If route param changes externally, update state (for back/forward buttons) ---
   React.useEffect(() => {
     if (params.chapter !== undefined)
       setCurrentChapterIndex(Number(params.chapter));
     if (params.page !== undefined) setCurrentPageIndex(Number(params.page));
     if (params.chunk !== undefined) setCurrentChunkIndex(Number(params.chunk));
-    // eslint-disable-next-line
   }, [params.chapter, params.page, params.chunk]);
 
-  // Paginates the text for the book screen
   const paginateText = (text: string, fontSize = 16, lineHeight = 24) => {
     const words = text.split(/\s+/).filter(Boolean);
     const usableHeight = height * 0.9;
@@ -139,22 +119,22 @@ export default function BookDetailScreen() {
 
   const findTriggerWords = (text: string) => {
     const { words, msPerWord } = calculateWordTiming(text);
-    const found: TriggerWord[] = [];
-    words.forEach((word, index) => {
-      const clean = word.toLowerCase().replace(/[^\w]/g, "");
-      if (WORD_TRIGGERS[clean]) {
-        found.push({
-          id: `${index}`,
-          word: clean,
-          position: index,
-          timing: index * msPerWord,
-        });
-      }
-    });
-    return found;
+    return words
+      .map((word, index) => {
+        const clean = word.toLowerCase().replace(/[^\w]/g, "");
+        if (WORD_TRIGGERS[clean]) {
+          return {
+            id: `${index}`,
+            word: clean,
+            position: index,
+            timing: index * msPerWord,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean) as TriggerWord[];
   };
 
-  // Stop timer only; don't wipe the current index
   const stopReadingTimer = React.useCallback(() => {
     if (wordTimeoutRef.current) {
       clearTimeout(wordTimeoutRef.current);
@@ -162,17 +142,13 @@ export default function BookDetailScreen() {
     }
   }, []);
 
-  // Start/resume the reading timer from a specific index (default 0)
-  // ✅ accepts optional fresh triggers to avoid stale state in closure
   const startReadingTimer = React.useCallback(
     (resumeFromIndex?: number, triggersArg?: TriggerWord[]) => {
       stopReadingTimer();
-
       const chunk = paginatedChunks[currentChunkIndex] || "";
       const words = chunk.split(/\s+/).filter(Boolean);
-      const msPerWord = 60000 / (wpmRef.current || 200); // lock timing for the chunk
+      const msPerWord = 60000 / (wpmRef.current || 200);
 
-      // Build map for trigger lookup from the freshest source
       const sourceTriggers = triggersArg ?? triggerWords;
       const triggerMap = new Map<number, TriggerWord>();
       sourceTriggers.forEach((t) => triggerMap.set(t.position, t));
@@ -183,9 +159,7 @@ export default function BookDetailScreen() {
       setActiveTriggerWords(new Set());
 
       let idx = startIndex;
-
       const tick = () => {
-        // Fire trigger for this word index (at most once, since idx strictly increases)
         const trig = triggerMap.get(idx);
         if (trig) {
           setActiveTriggerWords((prevSet) => {
@@ -193,7 +167,6 @@ export default function BookDetailScreen() {
             s.add(trig.id);
             return s;
           });
-
           SoundManager.playTrigger(WORD_TRIGGERS[trig.word]).finally(() => {
             setActiveTriggerWords((prevSet) => {
               const s = new Set(prevSet);
@@ -202,11 +175,8 @@ export default function BookDetailScreen() {
             });
           });
         }
-
-        // Highlight current word
         setActiveWordIndex(idx);
         currentWordIndexRef.current = idx;
-
         idx++;
         if (idx < words.length) {
           wordTimeoutRef.current = setTimeout(tick, msPerWord);
@@ -214,14 +184,11 @@ export default function BookDetailScreen() {
           stopReadingTimer();
         }
       };
-
-      // Delay the first tick so the highlight & sound match reading pace
       wordTimeoutRef.current = setTimeout(tick, msPerWord);
     },
     [paginatedChunks, currentChunkIndex, triggerWords, stopReadingTimer]
   );
 
-  // Options panel open/close => pause/resume
   const openOptions = React.useCallback(() => {
     stopReadingTimer();
     setOptionsOpen(true);
@@ -229,17 +196,14 @@ export default function BookDetailScreen() {
 
   const closeOptions = React.useCallback(() => {
     setOptionsOpen(false);
-    // Resume from current index with current triggers
     startReadingTimer(currentWordIndexRef.current ?? 0);
   }, [startReadingTimer]);
 
-  // --- Main page navigation ---
   const currentChapter = book?.chapters?.[currentChapterIndex];
   const currentPage = currentChapter?.pages?.[currentPageIndex];
   const totalChapters = book?.chapters?.length || 0;
   const totalPages = currentChapter?.pages?.length || 0;
 
-  // Page/chunk navigation
   const goToNextPage = () => {
     stopReadingTimer();
     if (currentChunkIndex < paginatedChunks.length - 1) {
@@ -282,7 +246,6 @@ export default function BookDetailScreen() {
     }
   };
 
-  // Loads ambient soundscape
   const loadSoundscapeForPage = async (
     chapterIndex?: number,
     pageIndex?: number
@@ -291,13 +254,10 @@ export default function BookDetailScreen() {
     const pi = pageIndex ?? currentPageIndex;
     const page = book?.chapters?.[ci]?.pages?.[pi];
 
-    // Stop only the ambience, keep triggers running
     await SoundManager.stopCarpet();
 
-    // Decide which ambience to use
-    let ambienceKey = page?.ambient as string; // if your page data already has it
+    let ambienceKey = page?.ambient as string;
     if (!ambienceKey) {
-      // fallback: hardcoded mapping by page
       const pageAmbienceMap: Record<string, string> = {
         "0-0": "windy_mountains.mp3",
         "0-1": "cabin_rain.mp3",
@@ -308,24 +268,18 @@ export default function BookDetailScreen() {
 
     const asset = SOUND_MAP[ambienceKey];
     if (asset) {
-      console.log(`🎵 Playing carpet sound: ${ambienceKey}`);
       await SoundManager.playCarpet(asset);
-    } else {
-      console.warn(`No local asset found for ambience key: ${ambienceKey}`);
     }
   };
 
-  // Set paginatedChunks when page changes
   React.useEffect(() => {
     if (book && currentPage) {
       const chunks = paginateText(currentPage.content);
       setPaginatedChunks(chunks);
       setCurrentChunkIndex(0);
     }
-    // eslint-disable-next-line
   }, [book, currentChapterIndex, currentPageIndex]);
 
-  // When chunk changes: recompute triggers, reset state cleanly, then start with fresh triggers
   React.useEffect(() => {
     if (
       book &&
@@ -335,19 +289,13 @@ export default function BookDetailScreen() {
       const chunk = paginatedChunks[currentChunkIndex];
       const triggers = findTriggerWords(chunk);
       setTriggerWords(triggers);
-
-      // Reset highlight, triggers, and indices
       firedTriggerIdsRef.current = new Set();
       setActiveTriggerWords(new Set());
-      currentIdxRef.current = 0;
       setActiveWordIndex(0);
 
       loadSoundscapeForPage(currentChapterIndex, currentPageIndex);
-
-      // ✅ Start reading using the freshly computed triggers
       startReadingTimer(0, triggers);
     }
-    // eslint-disable-next-line
   }, [
     currentChunkIndex,
     currentPageIndex,
@@ -355,14 +303,12 @@ export default function BookDetailScreen() {
     paginatedChunks,
   ]);
 
-  // If WPM changes mid-reading, restart timer from current index with new speed
   React.useEffect(() => {
     if (paginatedChunks.length > 0) {
       startReadingTimer(currentWordIndexRef.current ?? 0);
     }
   }, [wpm, startReadingTimer, paginatedChunks.length]);
 
-  // Cleanup on blur/unmount/app background
   useFocusEffect(
     React.useCallback(() => {
       return () => {
@@ -382,14 +328,6 @@ export default function BookDetailScreen() {
     return () => sub.remove();
   }, [stopReadingTimer]);
 
-  React.useEffect(() => {
-    return () => {
-      SoundManager.stopAll();
-      stopReadingTimer();
-    };
-  }, [stopReadingTimer]);
-
-  // --- Render words with highlights ---
   const renderTextWithHighlights = (text: string) => {
     const words = text.split(/\s+/).filter(Boolean);
     return (
@@ -489,8 +427,6 @@ export default function BookDetailScreen() {
               ? `Chapter: ${currentChapter.title}`
               : `Chapter ${currentChapter?.chapter_number}`}
           </Text>
-
-          {/* ✅ No extra wrapping <Text>; render function already returns a <Text> */}
           {renderTextWithHighlights(paginatedChunks[currentChunkIndex] || "")}
         </View>
         <Text style={styles.progressText}>
@@ -532,7 +468,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: "40%",
     zIndex: 10,
-    borderWidth: 1,
   },
   rightTouchable: {
     position: "absolute",
@@ -541,7 +476,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: "40%",
     zIndex: 10,
-    borderWidth: 1,
   },
   progressContainer: { marginBottom: 16 },
   progressBar: { height: 2, backgroundColor: "transparent" },
@@ -562,8 +496,6 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     flexDirection: "row",
   } as any,
-  pageInfo: { alignItems: "center", marginVertical: 12 },
-  pageInfoText: { color: "#ccc", fontSize: 14, fontWeight: "500" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   triggerHighlight: {
     backgroundColor: "#ff6b6b",
@@ -582,9 +514,7 @@ const styles = StyleSheet.create({
     right: 0,
     height: "20%",
     zIndex: 20,
-    borderWidth: 1,
   },
-
   optionsPanel: {
     position: "absolute",
     top: 0,
@@ -596,7 +526,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#ccc",
   },
-
   sliderTitle: {
     fontSize: 18,
     fontWeight: "600",
@@ -614,5 +543,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 8,
   },
-  sliderHint: { marginTop: 16, color: "#777" },
+  sliderHint: {
+    fontSize: 12,
+    color: "#888",
+    marginTop: 4,
+    marginBottom: 16,
+  },
 });

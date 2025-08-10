@@ -2,25 +2,23 @@ import { Audio } from "expo-av";
 
 class SoundManager {
   private static carpetSound: Audio.Sound | null = null;
+  private static carpetAssetKey: any = null;
   private static activeSounds: Set<Audio.Sound> = new Set();
   private static isCarpetLoading: boolean = false;
+  private static swapToken = 0; // cancels in-flight swaps
 
-  // Smooth fade-in effect with shorter duration and fewer steps for seamless experience
+  // Smooth fade-in
   static async fadeIn(sound: Audio.Sound, duration = 1200, targetVolume = 0.5) {
     const steps = 10;
     const stepTime = duration / steps;
-
-    // Set initial volume immediately after play, so the sound is not completely silent
     await sound.setVolumeAsync(0.02);
-
     for (let i = 1; i <= steps; i++) {
-      const volume = (i / steps) * targetVolume;
-      await sound.setVolumeAsync(volume);
+      await sound.setVolumeAsync((i / steps) * targetVolume);
       await new Promise((res) => setTimeout(res, stepTime));
     }
   }
 
-  // Smooth fade-out effect, faster for responsive UI
+  // Smooth fade-out
   static async fadeOut(sound: Audio.Sound, duration = 800) {
     const status = await sound.getStatusAsync();
     if (!status.isLoaded) return;
@@ -35,82 +33,130 @@ class SoundManager {
     await sound.unloadAsync();
   }
 
-  // Stops all active sounds, including carpet and triggers
+  // Stops all active sounds
   static async stopAll() {
+    this.swapToken++; // cancel pending swaps
     await this.stopCarpet();
     for (const sound of this.activeSounds) {
       try {
         await sound.stopAsync();
         await sound.unloadAsync();
-      } catch (e) {}
+      } catch {}
     }
     this.activeSounds.clear();
     console.log("✅ All sounds stopped");
   }
 
-  // Plays the looping carpet/background sound with fade-in
-  static async playCarpet(asset: any) {
+  /**
+   * Cross-fade to new carpet (safe on web).
+   * Call this instead of stop+play.
+   */
+  static async playCarpet(asset: any, fadeMs = 800) {
     if (this.isCarpetLoading) return;
-    this.isCarpetLoading = true;
-    await this.stopCarpet();
+    if (this.carpetAssetKey === asset && this.carpetSound) return; // already playing same
 
+    const myToken = ++this.swapToken;
+    this.isCarpetLoading = true;
+
+    let next: Audio.Sound | null = null;
     try {
       const { sound } = await Audio.Sound.createAsync(asset, {
-        shouldPlay: false,
+        shouldPlay: true,
         isLooping: true,
-        volume: 0.02, // Start quietly for instant audio feedback
+        volume: 0.02,
       });
-      this.carpetSound = sound;
-
-      await sound.playAsync();
-      await this.fadeIn(sound, 1200, 0.5); // Fade up to 0.5 in 1.2s
-      console.log("🎵 Carpet sound started (with fade in)");
+      next = sound;
     } catch (e) {
-      console.log("Carpet play error:", e);
-    } finally {
+      console.log("Carpet load error:", e);
       this.isCarpetLoading = false;
+      return;
     }
-  }
 
-  // Stops the carpet/background sound with fade-out
-  static async stopCarpet() {
+    if (myToken !== this.swapToken) {
+      try {
+        await next.unloadAsync();
+      } catch {}
+      this.isCarpetLoading = false;
+      return;
+    }
+
+    await Promise.all([
+      this.fadeIn(next, fadeMs, 0.5),
+      this.fadeOut(this.carpetSound, fadeMs),
+    ]).catch(() => {});
+
     if (this.carpetSound) {
       try {
-        await this.fadeOut(this.carpetSound, 800);
+        await this.carpetSound.stopAsync();
+      } catch {}
+      try {
+        await this.carpetSound.unloadAsync();
+      } catch {}
+    }
+
+    this.carpetSound = next;
+    this.carpetAssetKey = asset;
+    this.isCarpetLoading = false;
+    console.log("🎵 Carpet sound swapped (crossfade)");
+  }
+
+  // Fade-out and stop current carpet
+  static async stopCarpet(fadeMs = 800) {
+    this.swapToken++;
+    if (this.carpetSound) {
+      try {
+        await this.fadeOut(this.carpetSound, fadeMs);
         console.log("🛑 Carpet sound stopped (with fade out)");
-      } catch (e) {
-        // Fallback: force stop/unload if fade fails
+      } catch {
         try {
           await this.carpetSound.stopAsync();
+        } catch {}
+        try {
           await this.carpetSound.unloadAsync();
         } catch {}
       }
       this.carpetSound = null;
+      this.carpetAssetKey = null;
     }
   }
 
   /**
-   * Plays a one-shot trigger sound (not looping).
+   * Plays a one-shot trigger and resolves when it finishes.
+   * Lets caller `.finally()` to clear highlights.
    */
-  static async playTrigger(asset: any) {
+  static async playTrigger(asset: any): Promise<void> {
+    let sound: Audio.Sound | null = null;
     try {
-      const { sound } = await Audio.Sound.createAsync(asset, {
+      const { sound: snd } = await Audio.Sound.createAsync(asset, {
         shouldPlay: true,
         isLooping: false,
-        volume: 0.02, // Start quietly
+        volume: 0.02,
       });
-
+      sound = snd;
       this.activeSounds.add(sound);
-      await this.fadeIn(sound, 300, 0.8); // Quick fade-in for trigger sound
+      await this.fadeIn(sound, 300, 0.8);
 
-      sound.setOnPlaybackStatusUpdate((status: any) => {
-        if (status.didJustFinish) {
-          sound.unloadAsync().catch(() => {});
-          this.activeSounds.delete(sound);
-        }
+      return new Promise<void>((resolve) => {
+        sound!.setOnPlaybackStatusUpdate((status: any) => {
+          if (
+            status.didJustFinish ||
+            (!status.isPlaying && status.positionMillis > 0)
+          ) {
+            sound!.unloadAsync().catch(() => {});
+            this.activeSounds.delete(sound!);
+            resolve();
+          }
+        });
       });
     } catch (e) {
       console.log("Trigger sound play error:", e);
+      if (sound) {
+        try {
+          await sound.unloadAsync();
+        } catch {}
+        this.activeSounds.delete(sound);
+      }
+      return Promise.resolve();
     }
   }
 }
