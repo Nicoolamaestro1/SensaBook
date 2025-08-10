@@ -1,0 +1,375 @@
+PRACTICAL APPLICATIONS FOUND IN AUDIO UI ACOUSTICS PAPER:
+============================================================
+
+PAGE 1 - Applications: example
+Content: Draft of April 25, 2016
+2:
+ACOUSTICS AND
+PSYCHOACOUSTICS
+Introduction
+The raw material that we are working with is sound. Our purpose is to develop effective
+ways to use sound to convey useful information. It is the relationships that we can construct
+using sound that enable its articulation. The design space, therefore, is largely constrained
+by the type and richness of of the sonic relationships employed.
+The objective of this chapter, therefore, is to investigate the properties of sound that
+
+--------------------------------------------------
+
+PAGE 2 - Applications: example
+Content: While these classes are not mutually exclusive, and can be used in combination, they
+provide a useful vocabulary for our study. First, they help us categorize the work of others
+for comparative purposes. Second, they help us in the process and rationalization of design.
+Third, they help guide our study of raw materials. They help us know what to look for, and
+to recognize properties of sound that can be exploited (or avoided).
+"Utterances" in the vocabulary of nonspeech audio take the form of on
+--------------------------------------------------
+
+PAGE 3 - Applications: example
+Content: Draft of April 25, 2016
+Acoustics
+Sounds are pressure variations that propagate in an elastic medium (for our purposes, the
+air). Our ears are essentially very sensitive barometers that sense these pressure variations
+and transforms them into a form which can be accommodated by the brain. There are a
+number of useful ways to analyze these pressure variations. One is to represent them as
+graphs of waves.
+Waveforms
+Figure 1 shows the waveform of a simple sound, with the amplitude of pressure varia
+--------------------------------------------------
+
+PAGE 4 - Applications: example, results
+Content: + =
+Figure 2 Two sine waves of different frequencies, amplitudes, and phases may be added to create a complex
+wave. Conversely, complex waves may be analyzed into their components via Fourier analysis.
+When a wave is Fourier analyzed, the results may be shown in a spectral plot (Figures 3
+to 6 show both spectral plots and waveforms). The spectrum of a wave is a two dimensional
+representation showing the amplitudes of sine waves of different frequencies that comprise
+the wave. Each spike on a spe
+--------------------------------------------------
+
+PAGE 5 - Applications: example
+Content: Draft of April 25, 2016
+Complex wave (harmonic)
+f 2f 3f 4f
+fundamental 2nd partial =
+frequency 1st harmonic
+Figure 4. A complex wave that is harmonic.
+Sound Example 2.2: Illustrating the sine wave components making up a complex
+harmonic wave. A 200 Hz complex tone consisting of 20 harmonics is played.
+The lowest 10 harmonics are cancelled and restored. Note that when nothing is
+changing, you hear a single tone, but on the transitions when harmonics switch
+on or off, the individual components can
+--------------------------------------------------
+
+PAGE 6 - Applications: example
+Content: Noise is made up of energy at many different frequencies. Figure 6 shows the flat
+spectrum and rough waveform that characterizes white noise, which contains equal amounts
+of all frequencies. Not all noise is white; for instance a noise might be band limited,
+containing energy in a certain band of frequencies. Bandwidth refers to the range of
+frequencies involved in a tone or noise.
+.
+Buxton, Gaver & Bly 2.6
+Psychoacoustics
+N o i s e
+Figure 6. The flat spectrum and rough waveform of white noise.
+
+--------------------------------------------------
+
+PAGE 7 - Applications: example
+Content: Draft of April 25, 2016
+Phase: its Implication on Sound and Representations
+As a rule, frequency domain representations of sound can be more easily correlated to
+perception than can time domain representations. For example, two sounds whose
+waveforms look similar may sound quite different. On the other hand, two waveforms that
+look quite different may sound similar, or the same (Plomp, 1976).
+Figure 7 shows two waveforms which have the same spectra and sound identical.
+Nevertheless, their wavefo
+--------------------------------------------------
+
+PAGE 9 - Applications: example, guideline
+Content: Draft of April 25, 2016
+another mini sound source that contributes to the overall intensity at another location. Like
+most laws, in practical terms this one is better considered a guideline.
+Simple Variation: Envelopes
+Virtually all natural sounds change over time. Perhaps the most obvious dimension of
+change is loudness, for how else could a sound have a start and a finish? Typically, this
+change is not a simple switch on and then off. The loudness contour of most sounds is more
+complex.
+We can
+--------------------------------------------------
+
+PAGE 10 - Applications: example
+Content: Sound Example 2.6: Amplitude Envelopes: A periodic complex tone of 440 Hz is
+played three times, each time with a different envelope. The example is presented
+twice.
+Spectral Variation over Time
+We have already seen that most sounds are made up of spectral components, or partials, of
+different frequencies. Typically, the relative amplitude of these partials does not remain
+constant throughout the duration of a sound. That is, it is usually incorrect to think of the
+envelope simply as a function 
+--------------------------------------------------
+
+PAGE 11 - Applications: example
+Content: Draft of April 25, 2016
+Helmholtz Revisited
+The study of acoustics has been dominated for over a hundred years by the pioneering work
+of Helmholtz (1885/1954). One of his main theories, and one which is still widely taught, is
+that timbre can be explained solely in terms of spectra, independent of time. More recent
+work has demonstrated that his theories are inadequate, and that the relative temporal change
+among partials is an important determinant of the timbre of a sound. In fact, these relat
+--------------------------------------------------
+
+PAGE 12 - Applications: example
+Content: Buxton, Gaver & Bly 2.12
+Psychoacoustics
+A S p e c tro g ra m
+Figure XX. A spectrogram. The sound energy in each 1/3 octave in tha audible range is plotted over time.
+The darker the plot, the more energy.
+Rather than show the amplitude envelopes of individual partials, a spectogram shows the
+energy in (usually 1/3 octave) bands of the audible range. The darker the plot in each band,
+the more the energy is there. This type of representation makes it very easy to get a sense of
+how the spectral en
+--------------------------------------------------
+
+PAGE 13 - Applications: example, results
+Content: Draft of April 25, 2016
+instrument, formant frequencies are fixed, and do not vary with the frequency of the
+vibration that is exciting the system. (See, for example, Slawson, 1968 for more on this.)
+One consequence of this is that for a given instrument, the spectral properties of a note at
+one pitch will typically be different than those at another (since being at different pitches,
+different parts of the spectrum will fall within the resonant regions of the instrument).
+Therefore, we cannot j
+--------------------------------------------------
+
+PAGE 15 - Applications: example
+Content: Draft of April 25, 2016
+• The pitch of an inharmonic tone or noise is a function of its amplitude-weighted average
+frequency (brightness1).
+• The JND for pitch discrimination is about 1/30 of a critical band.
+27.5 55 110 220 440 880 1,760 3,520
+Middle C
+Figure XX: The relationship of frequency to musical pitch. The frequency corresponding to the nominal
+fundamental frequency of each "A" on the piano keyboard is shown. Note that each octave between
+successive A's corresponds to a doubling of freq
+--------------------------------------------------
+
+PAGE 16 - Applications: example
+Content: Figure XX: The pitch helix, or spiral: Pitch height increases as one goes along the spiral. The closer two
+points on the spiral, the closer their pitch height. The vertical lines indicate notes of the same chroma, in this
+case, C's and D's. Because of the perceptual similarity of notes having the same chroma, despite large
+differences in pitch height, pitch height alone should not be used in mapping data to pitch.
+• Most people are bad at making absolute pitch judgments. The ability to do so, kn
+--------------------------------------------------
+
+PAGE 17 - Applications: results
+Content: Draft of April 25, 2016
+Buxton, Gaver & Bly 2.17 Psychoacoustics
+D
+A
+#
+G
+# / B
+/ E b
+# / A
+b
+b
+C # / D
+F
+b
+F #
+C
+/ G b
+G
+B
+D
+E
+A
+Figure XX: The Circle of Fifths
+All 12 notes of the western scale can be generated from a start note, and the interval of a 5th (7 semitones).
+Each new note is a fifth above the previous one. If we use the ratio of 3:2 for a fifth, however, the note that we
+get after 12 steps does not have an exact octave relationship with the start note.
+Without working through all of
+--------------------------------------------------
+
+PAGE 18 - Applications: example
+Content: • Loudness is affected by bandwidth. Within a critical band, energy is summed; outside
+of a critical band, loudness is summed. Sounds with a large bandwidth are louder than
+those with a narrow bandwidth, even if they have the same energy.
+• Loudness depends on duration. For sounds shorter than about a second, loudness
+increases with duration. For example, for each halving in duration, the intensity of noise
+bursts below 200 m.s. must be increased by about 3 dB in order to maintain constant
+loudn
+--------------------------------------------------
+
+PAGE 19 - Applications: experiment
+Content: Draft of April 25, 2016
+• Perception of changes in duration. The just noticeable difference (JND) for perceiving
+changes in the duration between two sounds is a change of about 10% for sounds longer
+than 50 msec., and proportional to the square root of the duration for sounds of less than
+50 msec. (Scharf & Buus, 1986, p. 14.62)
+• This JND is independent of the level and the spectral bandwidth of the signal.
+But:
+• Duration affects rhythm. For instance, if two notes of equal duration alternate s
+--------------------------------------------------
+
+PAGE 20 - Applications: example, experiment
+Content: Buxton, Gaver & Bly 2.20
+Psychoacoustics
+A
+B
+T / 2
+² t
+T
+T / 2
+Two streams of sounds are shown, A and B. Each consists of a short sound followed by a second. The
+first has a rectangular envelope (i.e., sharp onset and offset). The second has a slower gradual onset.
+In A, the onsets of the sounds are equally spaced. Consequently, one would expect a regular rhythm to
+be perceived if the pattern repeats. However, this is not true. Despite when the physical onset of the
+second sound begins, the perc
+--------------------------------------------------
+
+PAGE 21 - Applications: results
+Content: Draft of April 25, 2016
+Buxton, Gaver & Bly 2.21 Psychoacoustics
+A
+F
+B
+F
+r
+r
+. O
+e q u
+. T
+e q u
+n
+e
+w
+e
+e
+n
+o
+n
+S
+c y
+s
+c y
+o u n
+T i m
+o u n
+T i m
+d
+e
+d s
+e
+i s
+a
+h
+r e
+e a
+h
+r
+e
+d
+a r d
+S
+S
+o
+o
+u
+u
+r
+r
+c
+c
+e
+e
+1
+2
+Figure 9: Coherence of variations results in spectral fusion and grouping of partials by source.
+In part B of the figure, coherent microvariations (in this case vibrato) has been
+introduced on two of the partials. The partials now cluster into two groups, according to
+coherence: tho
+--------------------------------------------------
+
+PAGE 22 - Applications: example, experiment
+Content: • However, this is not a very useful notion for at least two reasons. First, the spectrum of
+virtually all sounds in nature is not static, so it makes little sense to talk about the
+waveform of a violin, for example. Second, it has been shown that properties of
+harmonics' dynamic behaviour can be far more important to timbre than the actual
+harmonics themselves. (Add discussion of Risset.)
+• In short, the theories of Hemholtz (and followers) about spectrum and timbre are
+incomplete, to say the l
+--------------------------------------------------
+
+PAGE 23 - Applications: example
+Content: Draft of April 25, 2016
+Remember, however, that there must be enough space to ensure that forward and backward
+masking can't hide intended signals. There is a great deal of literature about masking; see in
+particular Boff & Lincoln (1988).
+Auditory Streaming
+Auditory Streaming refers to the tendency for separate sounds to be assigned to perceptual
+"streams, which correspond to different sources of sound. Streaming takes place both in
+grouping sequential sounds and in "fusing" partials in the per
+--------------------------------------------------
+
+PAGE 24 - Applications: example
+Content: Changing Sounds
+Changing sounds are the most noticeable and the most informative. Most simply, all sounds
+involve changes of air pressure; if such changes are not large enough or fast enough, we
+won't hear anything. But even if we can hear a sound, what we are most sensitive to are
+changes, transitions, or transients. Sounds that don't change quickly fade into the perceptual
+background.
+• Change conveys information, and we tend to seek and attend to informative stimuli.
+Static sounds are moved t
+--------------------------------------------------
+
+PAGE 25 - Applications: example
+Content: Draft of April 25, 2016
+Buxton, Gaver & Bly 2.25 Psychoacoustics
+L o u d n e s s
+P i t c h
+Figure 12: Shepard Tones - The illusion of an infinite rising or descending pitch.
+Sound Example 2.?: Infinite Glissando - a Psychoacoustic Illusion. Three
+examples are provided. An upward gliss, a downward gliss, and one that glisses
+in both directions.
+Psychoacoustic Illusions: Infinite Accelerando/Deccelerando
+Furthermore, in 1974, a researcher at Bell Labs, Kenneth Knowlton (Risset 1986)
+demonstrated t
+--------------------------------------------------
+
+PAGE 27 - Applications: example
+Content: Draft of April 25, 2016
+• amplitude
+• reverb
+• equalization
+The Doppler Effect
+The Doppler effect is an effect whereby the perceived pitch of a sound source changes due to
+its relative motion towards or away from the listener. This is an effect that we hear every
+day, such as when a car or train passes us: the pitch goes up as the sound source approaches,
+and goes down as it moves away. It is an important effect to understand if one wants to be
+able to simulate moving sound sources.
+Why does the
+--------------------------------------------------
+
+PAGE 28 - Applications: example
+Content: away from a stationary listener at half the speed of sound. Use either the formula above or
+the following one (Truax, 1978):
+f' = fs x (v - vo)/(v - vs)
+where: v is the velocity of the sound in the medium
+vo is the velocity of the observer relative to the medium
+vs is the velocity of the source relative to the medium
+fs is the frequency of the source while statinary
+The net implication of all of this is that the frequency of simulated moving sounds must be
+shifted in accordance with the Doppler 
+--------------------------------------------------
+
+PAGE 29 - Applications: application, example
+Content: Draft of April 25, 2016
+• if not equidistant, the sound image will be localized to the closest speaker only (although
+both speakers will contribute to loudness)
+• when listening to a stereo, if you hear sounds from the far speaker when sitting close to
+the other, you are hearing two channel effects, not stereo (i.e., the sound you hear from
+the far speaker is not being presented from the near speaker.
+Acoustic "Holograms" and other such phenomena
+• we regularly hear of systems that can localize 
+--------------------------------------------------
+

@@ -5,6 +5,7 @@ from app.api import router as api_router
 # from app.api.router import router as api_router
 from app.db.session import engine, Base
 from app.models.book import Book  # Import your models
+from app.models.user import User  # Import User model
 
 
 app = FastAPI()
@@ -19,7 +20,8 @@ app.add_middleware(
 
 app.include_router(api_router)
  
-Book.metadata.create_all(bind=engine)
+# Create all database tables
+Base.metadata.create_all(bind=engine)
 
 
 

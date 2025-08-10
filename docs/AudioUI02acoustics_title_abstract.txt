@@ -1,0 +1,28 @@
+
+--- PAGE 1 ---
+Draft of April 25, 2016
+2:
+ACOUSTICS AND
+PSYCHOACOUSTICS
+Introduction
+The raw material that we are working with is sound. Our purpose is to develop effective
+ways to use sound to convey useful information. It is the relationships that we can construct
+using sound that enable its articulation. The design space, therefore, is largely constrained
+by the type and richness of of the sonic relationships employed.
+The objective of this chapter, therefore, is to investigate the properties of sound that
+afford the construction of such relationships. The working assumption is that the better we
+understand such properties, the more effectively we can use sound. It is sometimes said that
+design is choice. If that is so, then the quality of design is affected by the richness of the
+alternatives that one has to choose from and the criteria used in selection. Here we hope to
+provide the acoustic and perceptual foundation to support both.
+There are three classes of relationships that can be used to encode meaning into sound:
+• intrasound relationships: These are relationships established among the parameters of
+individual sounds themselves. For example, a message or datum may be encoded by
+establishing a particular relationship among the pitch, timbre and duration of a sound.
+• intersound relationships: These are relationships that are established between or among
+sounds. It is through the pattern of sounds that meaning is conveyed. A simple example
+would be assigning specific meaning to a particular motif.
+• extrasound relationships: These are relationships that are established between sound and
+entities that exist outside the domain of sound. For example, the sound of knocking on a
+door tells us about someone wanting to enter, rather than something about sound.
+Buxton, Gaver & Bly 2.1 Psychoacoustics

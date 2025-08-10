@@ -1,0 +1,154 @@
+KEY SOUND SCIENCE CONCEPTS FOUND IN PSYCHOACOUSTICS RESEARCH PAPER:
+============================================================
+
+PAGE 2 - Concepts: surround, waveform, release
+Content: 1
+PANNs: Large-Scale Pretrained Audio Neural Networks for
+Audio Pattern Recognition
+Qiuqiang Kong, Student Member, IEEE, Yin Cao, Member, IEEE, Turab Iqbal,
+Yuxuan Wang, Wenwu Wang, Senior Member, IEEE and Mark D. Plumbley, Fellow, IEEE
+Abstract—Audio pattern recognition is an important research Markov model (HMM) to classify three types of sounds:
+topic in the machine learning area, and includes several tasks wooden door open and shut, metal dropped and water poured.
+such as audio tagging, acou
+--------------------------------------------------
+
+PAGE 3 - Concepts: frequency, waveform, filter
+Content: 2
+tasks. However, previous works on transfer learning mainly TABLEI
+used music datasets or were limited to smaller datasets than CNNSFORAUDIOSETTAGGING
+AudioSet. In this work, we investigate transferring PANNs
+VGGish[1] CNN6 CNN10 CNN14
+to a wide range of audio pattern recognition tasks, including Log-melspectrogram Log-melspectrogram
+96frames×64melbins 1000frames×64melbins
+acoustic scene classification, general audio tagging, music 3×3@64 5×5@64 (cid:18)3×3@64(cid:19) (cid:18)3×3@64(cid:19)
+×2 
+--------------------------------------------------
+
+PAGE 4 - Concepts: waveform
+Content: 3
+TABLEII TABLEIII
+RESNETSFORAUDIOSETTAGGING MOBILENETSFORAUDIOSETTAGGING
+ResNet22 ResNet38 ResNet54 MobileNetV1 MobileNetV2
+Logmelspectrogram1000frames×64melbins 3×3@32,BN,ReLU
+(cid:0)3×3@512,BN,ReLU (cid:1)
+×2 Pooling2×2
+Pooling2×2 V1Block@64 V2Block,t=1@16
+(cid:0) BasicB@64(cid:1)
+×2
+(cid:0) BasicB@64(cid:1)
+×3
+(cid:0) BottleneckB@64(cid:1)
+×3 V1Block@128 (V2Block,t=6@24)×2
+Pooling2×2 Pooling2×2
+(cid:0) BasicB@128(cid:1)
+×2
+(cid:0) BasicB@128(cid:1)
+×4
+(cid:0) BottleneckB@128(cid:1)
+×4 V1Bloc
+--------------------------------------------------
+
+PAGE 5 - Concepts: frequency, pitch, waveform, filter
+Content: 4
+high level features. In [33] an 18-layer DaiNet with four Prediction
+convolutional layers in each convolutional block had achieved
+the best classification performance on the UrbanSound8K
+2D CNN
+dataset. layers
+2) LeeNet: Different from the DaiNet that applied large
+kernels in the first layer, LeeNet [44] applied small kernels
+Concat
+with a length of 3 on the waveforms. LeeNet stacked the
+kernels with lengths of 3 to replace the fixed length windows
+forSTFT.LeeNetiscomposedofseveralconvolutiona
+--------------------------------------------------
+
+PAGE 6 - Concepts: frequency, masking
+Content: 5
+IV. DATAPROCESSING
+(a) (𝑥(cid:2868),𝑦(cid:2868))∈𝐷(cid:2885)(cid:2931)(cid:2914)(cid:2919)(cid:2925)(cid:2903)(cid:2915)(cid:2930) 𝑥(cid:2868) NN Embedding FC
+AudioSet
+𝑦(cid:2868)
+In this section, we introduce data processing for AudioSet
+tagging,includingdatabalancinganddataaugmentation.Data Copy parameters
+balancing is a technique to solve the training problem of (b) (𝑥(cid:2869),𝑦(cid:2869))∈𝐷(cid:2898)(cid:2915)(cid:2933)(cid:2904)(cid:2911)(cid:2929)(cid:2921) 𝑥(cid:2869) NN Embedding FC
+
+--------------------------------------------------
+
+PAGE 7 - Concepts: frequency, waveform, release, filter
+Content: 6
+1.0
+0.8
+0.6
+0.4
+0.2
+0.0
+0 200k 400k 600k
+Iterations
+PA
+1.0
+Music (937,780)
+Speech (937,432)
+V M e u h s ic ic le a l ( 1 (1 2 1 2 2 ,2 ,3 3 3 1 7 ) ) 0.8
+Inside, small (70,159)
+Guitar (49,200)
+Plucked string (42,509) 0.6
+Car (39,503)
+Singing (39,469)
+Animal (37,857) 0.4
+0.2
+0.0
+0 200k 400k 600k
+Iterations
+PA
+1.0
+Canidae, dogs, (1,592)
+Traditional (1,579)
+T S a a b d l a m ( u 1 s , i 5 c 7 ( 5 1 ) ,572) 0.8
+Ska (1,563)
+Chant (1,559)
+Scary music (1,539) 0.6
+Liquid (1,533)
+Traffic noise, (1,523)
+--------------------------------------------------
+
+PAGE 10 - Concepts: stereo, filter
+Content: 9
+1.0
+0.8
+0.6
+0.4
+0.2
+0.0
+2 5 10 20 32 (all)
+Training samples per class
+ycaruccA
+1.0
+0.8
+0.6
+Finetune 0.4
+Scratch
+Freeze + 1layer 0.2
+Freeze + 3 layers
+0.0
+2 5 10 20 50 100 200 500 ~918 (all)
+Training samples per class
+Fig. 5. Accuracy of ESC-50 with various number of training samples per
+class.
+TABLEIX
+ACCURACYOFESC-50
+STOA[48] Scratch fine-tune Freeze_L1 Freeze_L3
+Acc. 0.865 0.833 0.947 0.908 0.918
+dataset with 40 samples per class. Table IX shows the 5-
+fold cross validation [49] accuracy of 
+--------------------------------------------------
+
+PAGE 14 - Concepts: waveform, filter
+Content: 13
+and H. Hamme, “An MFCC-GMM approach for event detection and https://cvssp.org/projects/making_sense_of_sounds/site/assets/
+classification,”inIEEEWorkshoponApplicationsofSignalProcessing challenge_abstracts_and_figures/Tianxiang_Chen.pdf,2018.
+toAudioandAcoustics(WASPAA),2013,pp.1–3. [53] E.Fonseca,M.Plakal,F.Font,D.P.W.Ellis,X.Favory,J.Pons,and
+[30] A. Mesaros, T. Heittola, A. Eronen, and T. Virtanen, “Acoustic event X.Serra,“General-purposetaggingoffreesoundaudiowithaudiosetla-
+detection in 
+--------------------------------------------------
+
