@@ -196,19 +196,30 @@ export default function BookDetailScreen() {
       const tick = () => {
         const trig = triggerMap.get(idx);
         if (trig) {
-          setActiveTriggerWords((prevSet) => {
-            const s = new Set(prevSet);
-            s.add(trig.id);
-            return s;
-          });
-          SoundManager.playTrigger(WORD_TRIGGERS[trig.word]).finally(() => {
-            setActiveTriggerWords((prevSet) => {
-              const s = new Set(prevSet);
+          setActiveTriggerWords((prev) => new Set(prev).add(trig.id));
+
+          // prefer API-provided sound file; fall back to word mapping
+          const assetKey = trig.soundKey ?? trig.word;
+          const asset = SOUND_MAP[assetKey] ?? WORD_TRIGGERS[trig.word];
+
+          if (asset) {
+            SoundManager.playTrigger(asset).finally(() => {
+              setActiveTriggerWords((prev) => {
+                const s = new Set(prev);
+                s.delete(trig.id);
+                return s;
+              });
+            });
+          } else {
+            // no asset mapped; clear highlight anyway
+            setActiveTriggerWords((prev) => {
+              const s = new Set(prev);
               s.delete(trig.id);
               return s;
             });
-          });
+          }
         }
+
         setActiveWordIndex(idx);
         currentWordIndexRef.current = idx;
         idx++;
@@ -218,6 +229,7 @@ export default function BookDetailScreen() {
           stopReadingTimer();
         }
       };
+
       wordTimeoutRef.current = setTimeout(tick, msPerWord);
     },
     [paginatedChunks, currentChunkIndex, triggerWords, stopReadingTimer]
@@ -280,16 +292,36 @@ export default function BookDetailScreen() {
     }
   };
 
+  // helper: map API "sound" path to a key you actually have in SOUND_MAP
+  function resolveSoundKey(soundFromApi?: string): string | undefined {
+    if (!soundFromApi) return undefined;
+    if (SOUND_MAP[soundFromApi]) return soundFromApi; // exact path present
+
+    const file = soundFromApi.split("/").pop() || soundFromApi;
+    const candidates = [`triggers/${file}`, `ambience/${file}`, file];
+    for (const k of candidates) {
+      if (SOUND_MAP[k]) return k;
+    }
+
+    // lightweight heuristics
+    if (/thunder/i.test(soundFromApi)) return "thunder-city-377703.mp3";
+    if (/footstep/i.test(soundFromApi))
+      return "footsteps-approaching-316715.mp3";
+    if (/wind/i.test(soundFromApi)) return "triggers/wind.mp3";
+    if (/storm/i.test(soundFromApi)) return "triggers/storm.mp3";
+    return undefined;
+  }
+
   const loadSoundscapeForPage = async (
     chapterIndex?: number,
     pageIndex?: number
   ) => {
-    if (!book) throw new Error("no book");
+    if (!book) return;
 
     const ci = chapterIndex ?? currentChapterIndex;
     const pi = pageIndex ?? currentPageIndex;
 
-    // ✅ Pull actual chapter/page numbers from book data
+    // ✅ real numbers from your book JSON (fallback to index+1 if missing)
     const chapterNumber = book.chapters?.[ci]?.chapter_number ?? ci + 1;
     const pageNumber = book.chapters?.[ci]?.pages?.[pi]?.page_number ?? pi + 1;
 
@@ -308,17 +340,47 @@ export default function BookDetailScreen() {
         pageNumber
       );
 
-      // pick first recommended carpet
+      // how many words come BEFORE the current chunk? (to shift absolute → chunk positions)
+      const wordsBeforeThisChunk = paginatedChunks
+        .slice(0, currentChunkIndex)
+        .reduce((sum, ch) => sum + ch.split(/\s+/).filter(Boolean).length, 0);
+
+      const thisChunkWordCount =
+        paginatedChunks[currentChunkIndex]?.split(/\s+/).filter(Boolean)
+          .length ?? Number.MAX_SAFE_INTEGER;
+
+      // map API triggers → your TriggerWord[], aligned to current chunk
+      const chunkTriggers: TriggerWord[] = (data.triggered_sounds || [])
+        .map((t: any, i: number) => {
+          const absolutePos = Number(t.word_position ?? t.position ?? 0);
+          const posInChunk = absolutePos - wordsBeforeThisChunk;
+          return {
+            id: String(i),
+            word: String(t.word || "").toLowerCase(),
+            position: posInChunk,
+            timing: 0, // timing comes from your WPM loop
+            soundKey: resolveSoundKey(t.sound), // 🔑 carry the exact file if available
+          };
+        })
+        .filter((t) => t.position >= 0 && t.position < thisChunkWordCount);
+
+      // swap in server triggers + restart reader using them
+      setTriggerWords(chunkTriggers);
+      stopReadingTimer();
+      startReadingTimer(0, chunkTriggers); // make sure startReadingTimer prefers trig.soundKey if present
+
+      // play ambient "carpet" from API (first track)
       const first = data.carpet_tracks?.[0];
       if (first && SOUND_MAP[first]) {
         await SoundManager.playCarpet(SOUND_MAP[first], first);
-        return; // success via API
       }
+
+      return; // handled by API
     } catch (err) {
       console.log("Soundscape API fallback:", err);
     }
 
-    // --- fallback local mapping ---
+    // --- fallback to your local mapping if API fails ---
     const page = book?.chapters?.[ci]?.pages?.[pi];
     let ambienceKey = page?.ambient as string;
 

@@ -65,4 +65,5 @@ export type TriggerWord = {
   word: string;
   position: number;
   timing: number;
+  soundKey?: string;
 };
