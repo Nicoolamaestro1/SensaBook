@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   AppState,
   Dimensions,
+  Platform,
 } from "react-native";
 import { ProgressBar } from "react-native-paper";
 import Animated, {
@@ -18,10 +19,43 @@ import Animated, {
 import SoundManager from "../utils/soundManager";
 import { useBook } from "../../hooks/useBooks";
 import { useWpm } from "../../hooks/useWpm";
-
 import { WORD_TRIGGERS, TriggerWord, SOUND_MAP } from "../../constants/sounds";
 import CrossPlatformSlider from "../components/CrossPlatformSlider";
 const { height, width } = Dimensions.get("window");
+const API_HOST =
+  Platform.OS === "android"
+    ? "http://10.0.2.2:8000" // Android emulator -> host machine
+    : "http://127.0.0.1:8000"; // iOS sim / mac
+
+const API_BASE = `${API_HOST}/api/soundscape`;
+
+type SoundscapeResponse = {
+  book_id: number;
+  book_page_id: number;
+  summary: string;
+  detected_scenes: string[];
+  scene_keyword_counts: Record<string, number>;
+  scene_keyword_positions: Record<string, number[]>;
+  carpet_tracks: string[]; // e.g. ["windy_mountains.mp3"]
+  triggered_sounds: Array<{ word: string; position: number; file: string }>;
+};
+
+async function fetchSoundscape(
+  bookId: string | number,
+  chapterNumber: number,
+  pageNumber: number
+): Promise<SoundscapeResponse> {
+  console.log(
+    `Fetching soundscape: ${API_BASE}/book/${bookId}/chapter/${chapterNumber}/page/${pageNumber}`
+  );
+  const res = await fetch(
+    `${API_BASE}/book/${bookId}/chapter/${chapterNumber}/page/${pageNumber}`
+  );
+  if (!res.ok) {
+    throw new Error(`soundscape ${res.status}`);
+  }
+  return res.json();
+}
 
 export default function BookDetailScreen() {
   const params = useLocalSearchParams();
@@ -252,10 +286,38 @@ export default function BookDetailScreen() {
   ) => {
     const ci = chapterIndex ?? currentChapterIndex;
     const pi = pageIndex ?? currentPageIndex;
-    const page = book?.chapters?.[ci]?.pages?.[pi];
 
-    // Decide ambience key for this page
+    // try server first
+    try {
+      if (!book) throw new Error("no book");
+      const data = await fetchSoundscape(bookId as string, ci, pi);
+
+      // pick first recommended carpet
+      const first = data.carpet_tracks?.[0];
+      if (first && SOUND_MAP[first]) {
+        await SoundManager.playCarpet(SOUND_MAP[first], first);
+
+        // OPTIONAL: use server-provided triggers instead of local detection
+        // setTriggerWords(
+        //   data.triggered_sounds.map((t, i) => ({
+        //     id: String(i),
+        //     word: t.word.toLowerCase(),
+        //     position: t.position,
+        //     timing: 0, // you can recompute using your msPerWord
+        //   }))
+        // );
+
+        return; // success via API, stop here
+      }
+    } catch (err) {
+      // silent fallback below
+      // console.log("Soundscape API fallback:", err);
+    }
+
+    // --- fallback to your local mapping if API fails or returns unknown file ---
+    const page = book?.chapters?.[ci]?.pages?.[pi];
     let ambienceKey = page?.ambient as string;
+
     if (!ambienceKey) {
       const pageAmbienceMap: Record<string, string> = {
         "0-0": "windy_mountains.mp3",
@@ -268,8 +330,7 @@ export default function BookDetailScreen() {
     const asset = SOUND_MAP[ambienceKey];
     if (!asset) return;
 
-    // Pass key to SoundManager so it only reloads if different
-    await SoundManager.playCarpet(SOUND_MAP[ambienceKey], ambienceKey);
+    await SoundManager.playCarpet(asset, ambienceKey);
   };
 
   React.useEffect(() => {
