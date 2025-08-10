@@ -1433,7 +1433,9 @@ def get_contextual_summary(text: str) -> str:
     summary_parts = []
     
     if sorted_scenes:
-        scene_info = [f"{scene}({scene_counts[scene]})" for scene in sorted_scenes[:3]]
+        # Extract scene types from the scene dictionaries
+        scene_types = [scene["type"] for scene in sorted_scenes[:3]]
+        scene_info = [f"{scene_type}({scene_counts.get(scene_type, 0)})" for scene_type in scene_types]
         summary_parts.append(f"Scenes: {', '.join(scene_info)}")
     
     # Add trigger word info
@@ -1474,12 +1476,13 @@ def get_ambient_soundscape(book_id: int, chapter_number: int, page_number: int, 
     primary_sound = "ambience/default_ambience"
     confidence = 0.5
     
-    if mood_analysis:
+    if sorted_scenes:
         # Get the highest confidence scene
         best_scene = sorted_scenes[0]
-        primary_mood = mood_analysis[best_scene]["mood"]
-        primary_sound = mood_analysis[best_scene]["sound"]
-        confidence = mood_analysis[best_scene]["confidence"]
+        primary_mood = best_scene.get("mood", "neutral")
+        # Map mood to sound (you can enhance this mapping)
+        primary_sound = f"ambience/{primary_mood}_ambience" if primary_mood != "neutral" else "ambience/default_ambience"
+        confidence = best_scene.get("confidence", 0.5)
     
     # Get carpet tracks (primary and secondary)
     carpet_tracks = []
@@ -1489,7 +1492,8 @@ def get_ambient_soundscape(book_id: int, chapter_number: int, page_number: int, 
     # Add secondary sound if available
     if len(sorted_scenes) > 1:
         secondary_scene = sorted_scenes[1]
-        secondary_sound = mood_analysis[secondary_scene]["sound"]
+        secondary_mood = secondary_scene.get("mood", "neutral")
+        secondary_sound = f"ambience/{secondary_mood}_ambience" if secondary_mood != "neutral" else "ambience/default_ambience"
         if secondary_sound != primary_sound:
             carpet_tracks.append(secondary_sound)
 

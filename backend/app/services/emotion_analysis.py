@@ -136,7 +136,7 @@ class AdvancedEmotionAnalyzer:
         found_keywords = []
         
         # Enhanced keyword analysis with context weighting
-        for emotion_type, keywords in self.emotion_keywords.items():
+        for emotion_type, keywords in self.*/.items():
             for keyword, weight in keywords.items():
                 if keyword in text:
                     # Apply context-based weight adjustment
