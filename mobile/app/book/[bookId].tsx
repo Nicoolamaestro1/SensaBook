@@ -23,67 +23,6 @@ import { WORD_TRIGGERS, TriggerWord, SOUND_MAP } from "../../constants/sounds";
 import CrossPlatformSlider from "../components/CrossPlatformSlider";
 const { height, width } = Dimensions.get("window");
 
-import windyMountains from "../sounds/ambience/windy_mountains.mp3";
-import defaultAmbience from "../sounds/ambience/default_ambience.mp3";
-import tenseDrones from "../sounds/ambience/tense_drones.mp3";
-import footstepsApproaching from "../sounds/triggers/footsteps/footsteps-approaching-316715.mp3";
-import atmosphereSound from "../sounds/ambience/atmosphere-sound-effect-239969.mp3";
-import thunderCity from "../sounds/ambience/thunder-city-377703.mp3";
-import stormyNight from "../sounds/ambience/stormy_night.mp3";
-import storm from "../sounds/triggers/storm/storm.mp3";
-import cabinRain from "../sounds/ambience/cabin_rain.mp3";
-import cabin from "../sounds/ambience/cabin.mp3";
-import windHowl from "../sounds/triggers/wind/wind.mp3";
-
-const SOUND_MAP: Record<string, any> = {
-  // Ambience sounds (carpet sounds)
-  "ambience/windy_mountains.mp3": windyMountains,
-  "ambience/default_ambience.mp3": defaultAmbience,
-  "ambience/tense_drones.mp3": tenseDrones,
-  "ambience/atmosphere-sound-effect-239969.mp3": atmosphereSound,
-  "ambience/thunder-city-377703.mp3": thunderCity,
-  "ambience/stormy_night.mp3": stormyNight,
-  "ambience/cabin_rain.mp3": cabinRain, // Indoor cabin sound with rain
-  "ambience/cabin.mp3": cabin, // Indoor cabin sound without rain
-  
-  // Trigger sounds
-  "triggers/footsteps-approaching-316715.mp3": footstepsApproaching,
-  "triggers/storm.mp3": storm,
-  "triggers/wind.mp3": windHowl,
-  
-  // Legacy mappings for backward compatibility
-  "windy_mountains.mp3": windyMountains,
-  "default_ambience.mp3": defaultAmbience,
-  "tense_drones.mp3": tenseDrones,
-  "footsteps-approaching-316715.mp3": footstepsApproaching,
-  "atmosphere-sound-effect-239969.mp3": atmosphereSound,
-  "thunder-city-377703.mp3": thunderCity,
-  "stormy_night.mp3": stormyNight,
-  "storm.mp3": storm,
-  "cabin_rain.mp3": cabinRain,
-  "cabin.mp3": cabin,
-  "restaurant_murmur.mp3": atmosphereSound,
-  "hotel_lobby.mp3": atmosphereSound,
-  "quiet_museum.mp3": defaultAmbience,
-  "horse_carriage.mp3": footstepsApproaching,
-  "stone_echoes.mp3": tenseDrones,
-  "night_forest.mp3": windyMountains,
-  "indoors.mp3": cabinRain,
-  "inside.mp3": cabinRain,
-  "house.mp3": cabinRain,
-  "room.mp3": cabinRain,
-  "building.mp3": cabinRain,
-  "apartment.mp3": cabinRain,
-  "home.mp3": cabinRain,
-  "wind.mp3": windHowl,
-};
-
-interface TriggerWord {
-  id: string;
-  word: string;
-  position: number;
-  timing: number;
-}
 export default function BookDetailScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
@@ -315,7 +254,6 @@ export default function BookDetailScreen() {
     const pi = pageIndex ?? currentPageIndex;
     const page = book?.chapters?.[ci]?.pages?.[pi];
 
-<<<<<<< HEAD
     // Decide ambience key for this page
     let ambienceKey = page?.ambient as string;
     if (!ambienceKey) {
@@ -325,36 +263,6 @@ export default function BookDetailScreen() {
         "1-0": "stormy_night.mp3",
       };
       ambienceKey = pageAmbienceMap[`${ci}-${pi}`] || "default_ambience.mp3";
-=======
-      const response = await fetch(
-        `http://localhost:8000/soundscape/book/${bookId}/chapter${targetChapterIndex + 1}/page/${targetPageIndex + 1}`
-      );
-
-      if (!response.ok) {
-        await SoundManager.stopAll();
-        return;
-      }
-
-      const data = await response.json();
-      if (!data) {
-        await SoundManager.stopAll();
-        return;
-      }
-      if (data.carpet_tracks && data.carpet_tracks.length > 0) {
-        const soundFile = data.carpet_tracks[0];
-        const soundAsset = SOUND_MAP[soundFile];
-        if (soundAsset) {
-          await SoundManager.playCarpet(soundAsset);
-        } else {
-          console.warn(`Sound asset not found for: ${soundFile}`);
-          await SoundManager.stopAll();
-        }
-      } else {
-        await SoundManager.stopAll();
-      }
-    } catch (error) {
-      await SoundManager.stopAll();
->>>>>>> backend_improvement
     }
 
     const asset = SOUND_MAP[ambienceKey];
