@@ -102,9 +102,11 @@ export default function BookDetailScreen() {
 
   React.useEffect(() => {
     if (book) {
-      console.log("📚 Current book data:", JSON.stringify(book, null, 2));
+      console.log("📚 Current book:", JSON.stringify(book, null, 2));
+      console.log("📄 Current chapter index:", currentChapterIndex);
+      console.log("📄 Current page index:", currentPageIndex);
     }
-  }, [book]);
+  }, [book, currentChapterIndex, currentPageIndex]);
 
   const [optionsOpen, setOptionsOpen] = React.useState(false);
   const translateY = useSharedValue(-200);
@@ -319,7 +321,7 @@ export default function BookDetailScreen() {
     }
 
     // --- fallback to your local mapping if API fails or returns unknown file ---
-    const page = book?.chapters?.[ci]?.pages?.[pi];
+    const page = book?.chapter?.[ci]?.pages?.[pi];
     let ambienceKey = page?.ambient as string;
 
     if (!ambienceKey) {
