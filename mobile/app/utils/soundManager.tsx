@@ -1,5 +1,6 @@
 // utils/soundManager.ts
 import { Audio } from "expo-av";
+import { Platform } from "react-native";
 
 class SoundManager {
   // --- State ---
@@ -24,19 +25,40 @@ class SoundManager {
 
   private static async ensureAudioMode() {
     if (this.audioModeReady) return;
+
     try {
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_MIX_WITH_OTHERS,
-        allowsRecordingIOS: false,
-        shouldDuckAndroid: false,
-        interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
-        playThroughEarpieceAndroid: false,
+      // Build options per platform; don't send iOS keys on web/Android, etc.
+      const opts: any = {
         staysActiveInBackground: false,
-      });
-      this.audioModeReady = true;
+      };
+
+      if (Platform.OS === "ios") {
+        opts.playsInSilentModeIOS = true;
+
+        // Prefer new enums if present (SDK 50+), fall back to legacy constants
+        const iEnum = (Audio as any).InterruptionModeIOS;
+        opts.interruptionModeIOS =
+          iEnum?.MixWithOthers ??
+          (Audio as any).INTERRUPTION_MODE_IOS_MIX_WITH_OTHERS;
+      } else if (Platform.OS === "android") {
+        opts.shouldDuckAndroid = false;
+        opts.playThroughEarpieceAndroid = false;
+
+        const aEnum = (Audio as any).InterruptionModeAndroid;
+        opts.interruptionModeAndroid =
+          aEnum?.DoNotMix ??
+          (Audio as any).INTERRUPTION_MODE_ANDROID_DO_NOT_MIX;
+      } else {
+        // web: set nothing extra; web shim doesn't accept the native enums
+      }
+
+      await Audio.setAudioModeAsync(opts);
     } catch (e) {
-      console.warn("[SoundManager] setAudioMode failed:", e);
+      // If the platform rejects unknown keys, swallow and move on
+      console.warn("[SoundManager] setAudioMode failed (non-fatal):", e);
+    } finally {
+      // Don't retry every call; treat audio mode as best-effort
+      this.audioModeReady = true;
     }
   }
 
