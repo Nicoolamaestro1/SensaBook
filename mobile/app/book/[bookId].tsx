@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   AppState,
-  Dimensions
+  Dimensions,
 } from "react-native";
 import { ProgressBar } from "react-native-paper";
 import Animated, {
@@ -22,7 +22,6 @@ import { useWpm } from "../../hooks/useWpm";
 import { WORD_TRIGGERS, TriggerWord, SOUND_MAP } from "../../constants/sounds";
 import CrossPlatformSlider from "../components/CrossPlatformSlider";
 const { height, width } = Dimensions.get("window");
-
 
 export default function BookDetailScreen() {
   // ---- URL-based navigation state ----
@@ -42,10 +41,12 @@ export default function BookDetailScreen() {
 
   const [paginatedChunks, setPaginatedChunks] = React.useState<string[]>([]);
   const [triggerWords, setTriggerWords] = React.useState<TriggerWord[]>([]);
-  const [activeTriggerWords, setActiveTriggerWords] = React.useState<Set<string>>(
-    new Set()
+  const [activeTriggerWords, setActiveTriggerWords] = React.useState<
+    Set<string>
+  >(new Set());
+  const [activeWordIndex, setActiveWordIndex] = React.useState<number | null>(
+    null
   );
-  const [activeWordIndex, setActiveWordIndex] = React.useState<number | null>(null);
 
   const { wpm, setWpm } = useWpm();
 
@@ -85,13 +86,13 @@ export default function BookDetailScreen() {
   const [optionsOpen, setOptionsOpen] = React.useState(false);
   const translateY = useSharedValue(-200);
   const optionsAnim = useAnimatedStyle(() => ({
-    transform: [{ translateY: withTiming(translateY.value, { duration: 250 }) }],
+    transform: [
+      { translateY: withTiming(translateY.value, { duration: 250 }) },
+    ],
   }));
   React.useEffect(() => {
     translateY.value = optionsOpen ? 0 : -300;
   }, [optionsOpen, translateY]);
-
-
 
   // --- Keep position in URL (write to params on every change) ---
   React.useEffect(() => {
@@ -286,38 +287,31 @@ export default function BookDetailScreen() {
     chapterIndex?: number,
     pageIndex?: number
   ) => {
-    try {
-      const targetChapterIndex = chapterIndex ?? currentChapterIndex;
-      const targetPageIndex = pageIndex ?? currentPageIndex;
-      await SoundManager.stopAll();
+    const ci = chapterIndex ?? currentChapterIndex;
+    const pi = pageIndex ?? currentPageIndex;
+    const page = book?.chapters?.[ci]?.pages?.[pi];
 
-      const response = await fetch(
-        `http://localhost:8000/soundscape/book/${bookId}/chapter${
-          targetChapterIndex + 1
-        }/page/${targetPageIndex + 1}`
-      );
+    // Stop only the ambience, keep triggers running
+    await SoundManager.stopCarpet();
 
-      if (!response.ok) {
-        await SoundManager.stopAll();
-        return;
-      }
+    // Decide which ambience to use
+    let ambienceKey = page?.ambient as string; // if your page data already has it
+    if (!ambienceKey) {
+      // fallback: hardcoded mapping by page
+      const pageAmbienceMap: Record<string, string> = {
+        "0-0": "windy_mountains.mp3",
+        "0-1": "cabin_rain.mp3",
+        "1-0": "stormy_night.mp3",
+      };
+      ambienceKey = pageAmbienceMap[`${ci}-${pi}`] || "default_ambience.mp3";
+    }
 
-      const data = await response.json();
-      if (!data) {
-        await SoundManager.stopAll();
-        return;
-      }
-      if (data.carpet_tracks && data.carpet_tracks.length > 0) {
-        const soundFile = data.carpet_tracks[0];
-        const soundAsset = SOUND_MAP[soundFile];
-        if (soundAsset) {
-          await SoundManager.playCarpet(soundAsset);
-        }
-      } else {
-        await SoundManager.stopAll();
-      }
-    } catch {
-      await SoundManager.stopAll();
+    const asset = SOUND_MAP[ambienceKey];
+    if (asset) {
+      console.log(`🎵 Playing carpet sound: ${ambienceKey}`);
+      await SoundManager.playCarpet(asset);
+    } else {
+      console.warn(`No local asset found for ambience key: ${ambienceKey}`);
     }
   };
 
@@ -354,7 +348,12 @@ export default function BookDetailScreen() {
       startReadingTimer(0, triggers);
     }
     // eslint-disable-next-line
-  }, [currentChunkIndex, currentPageIndex, currentChapterIndex, paginatedChunks]);
+  }, [
+    currentChunkIndex,
+    currentPageIndex,
+    currentChapterIndex,
+    paginatedChunks,
+  ]);
 
   // If WPM changes mid-reading, restart timer from current index with new speed
   React.useEffect(() => {
@@ -398,7 +397,9 @@ export default function BookDetailScreen() {
         {words.map((word, index) => {
           const clean = word.toLowerCase().replace(/[^\w]/g, "");
           const trigger = triggerWords.find((t) => t.position === index);
-          const isActiveTrigger = trigger ? activeTriggerWords.has(trigger.id) : false;
+          const isActiveTrigger = trigger
+            ? activeTriggerWords.has(trigger.id)
+            : false;
           const isActiveReading = activeWordIndex === index;
 
           let style = undefined;
@@ -447,9 +448,12 @@ export default function BookDetailScreen() {
   const currentPageInBook =
     (book?.chapters
       ?.slice(0, currentChapterIndex)
-      .reduce((total: number, chapter: any) => total + chapter.pages.length, 0) || 0) +
-    currentPageIndex +
-    1 || 0;
+      .reduce(
+        (total: number, chapter: any) => total + chapter.pages.length,
+        0
+      ) || 0) +
+      currentPageIndex +
+      1 || 0;
 
   const readingProgress =
     totalPagesInBook > 0 ? currentPageInBook / totalPagesInBook : 0;
@@ -528,7 +532,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: "40%",
     zIndex: 10,
-    borderWidth: 1, 
+    borderWidth: 1,
   },
   rightTouchable: {
     position: "absolute",
@@ -593,8 +597,18 @@ const styles = StyleSheet.create({
     borderBottomColor: "#ccc",
   },
 
-  sliderTitle: { fontSize: 18, fontWeight: "600", marginBottom: 8, color: "#5b4636" },
-  sliderValue: { fontSize: 24, fontWeight: "700", marginBottom: 12, color: "red" },
+  sliderTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 8,
+    color: "#5b4636",
+  },
+  sliderValue: {
+    fontSize: 24,
+    fontWeight: "700",
+    marginBottom: 12,
+    color: "red",
+  },
   sliderScale: {
     flexDirection: "row",
     justifyContent: "space-between",
