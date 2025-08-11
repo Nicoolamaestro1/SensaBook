@@ -11,6 +11,22 @@ import cabin from "../app/sounds/ambience/cabin.mp3";
 import windHowl from "../app/sounds/triggers/wind/wind.mp3";
 
 export const SOUND_MAP: Record<string, any> = {
+  // Ambience sounds (carpet sounds)
+  "ambience/windy_mountains.mp3": windyMountains,
+  "ambience/default_ambience.mp3": defaultAmbience,
+  "ambience/tense_drones.mp3": tenseDrones,
+  "ambience/atmosphere-sound-effect-239969.mp3": atmosphereSound,
+  "ambience/thunder-city-377703.mp3": thunderCity,
+  "ambience/stormy_night.mp3": stormyNight,
+  "ambience/cabin_rain.mp3": cabinRain, // Indoor cabin sound with rain
+  "ambience/cabin.mp3": cabin, // Indoor cabin sound without rain
+
+  // Trigger sounds
+  "triggers/footsteps-approaching-316715.mp3": footstepsApproaching,
+  "triggers/storm.mp3": storm,
+  "triggers/wind.mp3": windHowl,
+
+  // Legacy mappings for backward compatibility
   "windy_mountains.mp3": windyMountains,
   "default_ambience.mp3": defaultAmbience,
   "tense_drones.mp3": tenseDrones,
@@ -49,4 +65,5 @@ export type TriggerWord = {
   word: string;
   position: number;
   timing: number;
+  soundKey?: string;
 };

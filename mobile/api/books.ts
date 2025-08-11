@@ -1,13 +1,44 @@
-const API_URL = "http://127.0.0.1:8000/api/books";
+const API_BASE = "http://127.0.0.1:8000/api";
+const SOUNDSCAPE_URL_API = "http://127.0.0.1:8000/";
+const BOOKS_URL = `${API_BASE}/books`;
+const SOUNDSCAPE_URL = `${SOUNDSCAPE_URL_API}/soundscape`;
 
 export const fetchBooks = async () => {
-  const res = await fetch(`${API_URL}`);
+  const res = await fetch(BOOKS_URL);
   if (!res.ok) throw new Error("Failed to fetch books");
   return res.json();
-}
+};
 
-export const fetchBook = async (bookId: string) => {
-  const res = await fetch(`${API_URL}/${bookId}`);
+export const fetchBook = async (bookId: string | number) => {
+  const res = await fetch(`${BOOKS_URL}/${bookId}`);
   if (!res.ok) throw new Error("Failed to fetch book");
   return res.json();
-}
+};
+
+export const fetchSoundscape = async (
+  bookId: string | number,
+  chapterNumber: number,
+  pageNumber: number
+) => {
+  const url = `${SOUNDSCAPE_URL}/book/${bookId}`;
+  console.log("🔗 Fetching Soundscape from:", url);
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to fetch soundscape");
+
+  const data = await res.json();
+
+  // Pretty print JSON in Metro logs
+  console.log("📄 Soundscape JSON Response:", JSON.stringify(data, null, 2));
+
+  return data as {
+    book_id: number;
+    book_page_id: number;
+    summary: string;
+    detected_scenes: string[];
+    scene_keyword_counts: Record<string, number>;
+    scene_keyword_positions: Record<string, number[]>;
+    carpet_tracks: string[];
+    triggered_sounds: Array<{ word: string; position: number; file: string }>;
+  };
+};

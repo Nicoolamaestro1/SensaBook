@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   AppState,
   Dimensions,
+  Platform,
 } from "react-native";
 import { ProgressBar } from "react-native-paper";
 import Animated, {
@@ -18,10 +19,44 @@ import Animated, {
 import SoundManager from "../utils/soundManager";
 import { useBook } from "../../hooks/useBooks";
 import { useWpm } from "../../hooks/useWpm";
-
 import { WORD_TRIGGERS, TriggerWord, SOUND_MAP } from "../../constants/sounds";
 import CrossPlatformSlider from "../components/CrossPlatformSlider";
 const { height, width } = Dimensions.get("window");
+const API_HOST =
+  Platform.OS === "android"
+    ? "http://10.0.2.2:8000" // Android emulator -> host machine
+    : "http://127.0.0.1:8000"; // iOS sim / mac
+
+const API_BASE = `${API_HOST}/soundscape`;
+
+type SoundscapeResponse = {
+  book_id: number;
+  book_page_id: number;
+  summary: string;
+  detected_scenes: string[];
+  scene_keyword_counts: Record<string, number>;
+  scene_keyword_positions: Record<string, number[]>;
+  carpet_tracks: string[]; // e.g. ["windy_mountains.mp3"]
+  triggered_sounds: Array<{ word: string; position: number; file: string }>;
+};
+
+async function fetchSoundscape(
+  bookId: string | number,
+  chapterNumber: number,
+  pageNumber: number
+): Promise<SoundscapeResponse> {
+  console.log(
+    `Fetching soundscape: ${API_BASE}/book/${bookId}/chapter${chapterNumber}/page/${pageNumber}`
+  );
+  const res = await fetch(
+    `${API_BASE}/book/${bookId}/chapter${chapterNumber}/page/${pageNumber}`
+  );
+  if (!res.ok) {
+    throw new Error(`soundscape ${res.status}`);
+  }
+  return res.json();
+}
+
 export default function BookDetailScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
@@ -161,19 +196,30 @@ export default function BookDetailScreen() {
       const tick = () => {
         const trig = triggerMap.get(idx);
         if (trig) {
-          setActiveTriggerWords((prevSet) => {
-            const s = new Set(prevSet);
-            s.add(trig.id);
-            return s;
-          });
-          SoundManager.playTrigger(WORD_TRIGGERS[trig.word]).finally(() => {
-            setActiveTriggerWords((prevSet) => {
-              const s = new Set(prevSet);
+          setActiveTriggerWords((prev) => new Set(prev).add(trig.id));
+
+          // prefer API-provided sound file; fall back to word mapping
+          const assetKey = trig.soundKey ?? trig.word;
+          const asset = SOUND_MAP[assetKey] ?? WORD_TRIGGERS[trig.word];
+
+          if (asset) {
+            SoundManager.playTrigger(asset).finally(() => {
+              setActiveTriggerWords((prev) => {
+                const s = new Set(prev);
+                s.delete(trig.id);
+                return s;
+              });
+            });
+          } else {
+            // no asset mapped; clear highlight anyway
+            setActiveTriggerWords((prev) => {
+              const s = new Set(prev);
               s.delete(trig.id);
               return s;
             });
-          });
+          }
         }
+
         setActiveWordIndex(idx);
         currentWordIndexRef.current = idx;
         idx++;
@@ -183,6 +229,7 @@ export default function BookDetailScreen() {
           stopReadingTimer();
         }
       };
+
       wordTimeoutRef.current = setTimeout(tick, msPerWord);
     },
     [paginatedChunks, currentChunkIndex, triggerWords, stopReadingTimer]
@@ -245,42 +292,223 @@ export default function BookDetailScreen() {
     }
   };
 
+  // helper: map API "sound" path to a key you actually have in SOUND_MAP
+  function resolveSoundKey(soundFromApi?: string): string | undefined {
+    if (!soundFromApi) return undefined;
+
+    // Quick exact hit
+    if (SOUND_MAP[soundFromApi]) return soundFromApi;
+
+    // Split into folder(s) + base
+    const parts = soundFromApi.split("/");
+    const baseRaw = parts.pop() || soundFromApi; // e.g. "default_ambience" or "windy_mountains.mp3"
+    const folders = parts.length ? parts : []; // e.g. ["ambience"]
+    const baseNoExt = baseRaw.replace(/\.[^/.]+$/, ""); // strip ext if present
+    const exts = [".mp3", ".m4a", ".wav", ".ogg"];
+
+    // Candidate keys to try in SOUND_MAP, most specific first
+    const candidates: string[] = [];
+
+    // 1) same folder + with/without ext
+    for (const dir of [...folders, "ambience", "triggers", ""]) {
+      const prefix = dir ? `${dir}/` : "";
+      candidates.push(`${prefix}${baseRaw}`);
+      candidates.push(`${prefix}${baseNoExt}`);
+      for (const ext of exts) candidates.push(`${prefix}${baseNoExt}${ext}`);
+    }
+
+    // 2) Try simple filename only (with common extensions)
+    candidates.push(baseNoExt);
+    for (const ext of exts) candidates.push(`${baseNoExt}${ext}`);
+
+    // Return the first candidate that exists in the map
+    for (const c of candidates) {
+      if (SOUND_MAP[c]) return c;
+    }
+
+    // 3) Fuzzy: look for any key containing or ending with the stem
+    const keys = Object.keys(SOUND_MAP);
+    const fuzzy = keys.find(
+      (k) =>
+        k.endsWith(`/${baseNoExt}`) ||
+        k.endsWith(`${baseNoExt}`) ||
+        k.endsWith(`${baseNoExt}.mp3`) ||
+        k.includes(`/${baseNoExt}.`)
+    );
+    if (fuzzy) return fuzzy;
+
+    // 4) Last resort heuristics (optional)
+    if (/thunder/i.test(soundFromApi))
+      return "triggers/thunder-city-377703.mp3";
+    if (/footstep/i.test(soundFromApi))
+      return "triggers/footsteps-approaching-316715.mp3";
+    if (/wind/i.test(soundFromApi)) return "triggers/wind.mp3";
+    if (/storm/i.test(soundFromApi)) return "triggers/storm.mp3";
+
+    // 5) Hard fallback to your default ambience if present
+    if (SOUND_MAP["ambience/default_ambience.mp3"])
+      return "ambience/default_ambience.mp3";
+
+    return undefined;
+  }
+
+  // Normalize a token the same way everywhere
+  function norm(w: string) {
+    return w.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ""); // letters+digits, Unicode-safe
+  }
+
+  // Split text into tokens (client-side reference tokenization)
+  function tokenize(text: string) {
+    return text.split(/\s+/).filter(Boolean);
+  }
+
+  // Find the nearest token index around an approximate position whose normalized form matches target
+  function snapToNearestToken(
+    tokens: string[],
+    targetWord: string,
+    approxIdx: number,
+    window = 2
+  ) {
+    const target = norm(targetWord);
+    // exact hit first
+    if (tokens[approxIdx] && norm(tokens[approxIdx]) === target)
+      return approxIdx;
+
+    // search a small window around the guess to correct off-by-one/two
+    for (let delta = 1; delta <= window; delta++) {
+      const left = approxIdx - delta;
+      const right = approxIdx + delta;
+      if (left >= 0 && norm(tokens[left] || "") === target) return left;
+      if (right < tokens.length && norm(tokens[right] || "") === target)
+        return right;
+    }
+    return approxIdx; // fallback: leave as-is
+  }
+
   const loadSoundscapeForPage = async (
     chapterIndex?: number,
     pageIndex?: number
   ) => {
+    if (!book) return;
+
     const ci = chapterIndex ?? currentChapterIndex;
     const pi = pageIndex ?? currentPageIndex;
-    
+
+    // ✅ real numbers from your book JSON (fallback to index+1 if missing)
+    const chapterNumber = book.chapters?.[ci]?.chapter_number ?? ci + 1;
+    const pageNumber = book.chapters?.[ci]?.pages?.[pi]?.page_number ?? pi + 1;
+
+    console.log("📡 Sending to API:", {
+      bookId,
+      chapterNumber,
+      pageNumber,
+      ci,
+      pi,
+    });
+
     try {
-      const response = await fetch(
-        `http://localhost:8000/soundscape/book/${bookId}/chapter${ci + 1}/page/${pi + 1}`
+      const data = await fetchSoundscape(
+        bookId as string,
+        chapterNumber,
+        pageNumber
       );
 
-      if (!response.ok) {
-        await SoundManager.stopAll();
-        return;
+      // how many words come BEFORE the current chunk? (to shift absolute → chunk positions)
+      const chunkText = paginatedChunks[currentChunkIndex] || "";
+      const chunkTokens = tokenize(chunkText);
+
+      // how many words before this chunk (so we can convert absolute -> chunk index)
+      const wordsBeforeThisChunk = paginatedChunks
+        .slice(0, currentChunkIndex)
+        .reduce((sum, ch) => sum + tokenize(ch).length, 0);
+
+      // Map API triggers -> client triggers, then SNAP indexes
+      const chunkTriggers: TriggerWord[] = (data.triggered_sounds || [])
+        .map((t: any, i: number) => {
+          const absolutePos = Number(t.word_position ?? t.position ?? 0);
+          const approxInChunk = absolutePos - wordsBeforeThisChunk;
+
+          // snap to the nearest real token that matches "storm", "wind", etc.
+          const snapped = snapToNearestToken(
+            chunkTokens,
+            String(t.word || ""),
+            approxInChunk,
+            2
+          );
+
+          console.log(
+            "🔑 SOUND_MAP contains:",
+            Object.keys(SOUND_MAP).filter((k) => k.includes("environmental"))
+          );
+
+          return {
+            id: String(i),
+            word: String(t.word || "").toLowerCase(),
+            position: snapped,
+            timing: 0,
+            soundKey: resolveSoundKey(t.sound), // keep your resolver
+          };
+        })
+        .filter((t) => t.position >= 0 && t.position < chunkTokens.length);
+
+      // swap in server triggers + restart reader using them
+      setTriggerWords(chunkTriggers);
+      stopReadingTimer();
+      startReadingTimer(0, chunkTriggers); // make sure startReadingTimer prefers trig.soundKey if present
+
+      // play ambient "carpet" from API (first track)
+      // play ambient "carpet" from API (first track) with key resolution + logs
+      const first = data.carpet_tracks?.[0];
+      const resolvedCarpetKey = resolveSoundKey(first);
+
+      console.log("🪵 Carpet from API:", { raw: first, resolvedCarpetKey });
+
+      if (resolvedCarpetKey && SOUND_MAP[resolvedCarpetKey]) {
+        try {
+          console.log(
+            `🎵 Playing ambient (API): "${first}" → "${resolvedCarpetKey}"`
+          );
+          await SoundManager.playCarpet(
+            SOUND_MAP[resolvedCarpetKey],
+            resolvedCarpetKey
+          );
+        } catch (e) {
+          console.warn("❗ playCarpet failed (API):", e);
+        }
+      } else if (first) {
+        console.warn("⚠️ No SOUND_MAP match for API carpet:", first);
       }
 
-      const data = await response.json();
-      if (!data) {
-        await SoundManager.stopAll();
-        return;
+      return; // handled by API
+    } catch (err) {
+      console.log("Soundscape API fallback:", err);
+    }
+
+    // --- fallback to your local mapping if API fails ---
+    const page = book?.chapters?.[ci]?.pages?.[pi];
+    let ambienceKey = page?.ambient as string;
+
+    if (!ambienceKey) {
+      const pageAmbienceMap: Record<string, string> = {
+        "0-0": "windy_mountains.mp3",
+        "0-1": "cabin_rain.mp3",
+        "1-0": "stormy_night.mp3",
+      };
+      ambienceKey = pageAmbienceMap[`${ci}-${pi}`] || "default_ambience.mp3";
+    }
+
+    const asset = SOUND_MAP[ambienceKey];
+    console.log("🌲 Fallback ambience:", { ambienceKey, assetFound: !!asset });
+
+    if (asset) {
+      try {
+        console.log(`🎵 Playing ambient (fallback): "${ambienceKey}"`);
+        await SoundManager.playCarpet(asset, ambienceKey);
+      } catch (e) {
+        console.warn("❗ playCarpet failed (fallback):", e);
       }
-      if (data.carpet_tracks && data.carpet_tracks.length > 0) {
-        const soundFile = data.carpet_tracks[0];
-        const soundAsset = SOUND_MAP[soundFile];
-        if (soundAsset) {
-          await SoundManager.playCarpet(soundAsset);
-        } else {
-          console.warn(`Sound asset not found for: ${soundFile}`);
-          await SoundManager.stopAll();
-        }
-      } else {
-        await SoundManager.stopAll();
-      }
-    } catch (error) {
-      await SoundManager.stopAll();
+    } else {
+      console.warn("⚠️ No SOUND_MAP for fallback ambience:", ambienceKey);
     }
   };
 

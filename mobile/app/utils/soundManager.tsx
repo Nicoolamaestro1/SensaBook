@@ -162,11 +162,11 @@ class SoundManager {
     fadeMs = 900
   ) {
     await this.ensureAudioMode();
-
     let key: string | undefined;
     if (typeof keyOrFade === "string") key = keyOrFade;
     else if (typeof keyOrFade === "number") fadeMs = keyOrFade;
 
+    console.log(`🎵 Ambient carpet requested: "${key}"`);
     // Skip if same ambience already playing
     if (key && this.currentCarpetKey === key && this.carpetSound) return;
     if (!key && this.carpetAssetId === asset && this.carpetSound) return;

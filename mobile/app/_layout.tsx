@@ -1,6 +1,6 @@
+// app/_layout.tsx
 import React from "react";
 import { Stack } from "expo-router";
-import { ImageBackground, ActivityIndicator, View } from "react-native";
 import { ThemeProvider, DefaultTheme } from "@react-navigation/native";
 import {
   useFonts,
@@ -12,10 +12,7 @@ import {
 
 const CustomTheme = {
   ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    background: "transparent",
-  },
+  colors: { ...DefaultTheme.colors, background: "#0d0b1a" }, // opaque
 };
 
 export default function RootLayout() {
@@ -26,23 +23,15 @@ export default function RootLayout() {
     Montserrat_700Bold,
   });
 
-  if (!fontsLoaded) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
-
   return (
-    <ImageBackground
-      source={require("../assets/images/bg-books.jpg")}
-      style={{ flex: 1, width: "100%", height: "100%" }}
-      resizeMode="cover"
-    >
-      <ThemeProvider value={CustomTheme}>
-        <Stack screenOptions={{ headerShown: false }} />
-      </ThemeProvider>
-    </ImageBackground>
+    <ThemeProvider value={CustomTheme}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: "slide_from_right",
+          contentStyle: { backgroundColor: "#0d0b1a" }, // opaque screen view
+        }}
+      />
+    </ThemeProvider>
   );
 }
