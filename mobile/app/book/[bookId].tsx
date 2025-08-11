@@ -295,20 +295,60 @@ export default function BookDetailScreen() {
   // helper: map API "sound" path to a key you actually have in SOUND_MAP
   function resolveSoundKey(soundFromApi?: string): string | undefined {
     if (!soundFromApi) return undefined;
-    if (SOUND_MAP[soundFromApi]) return soundFromApi; // exact path present
 
-    const file = soundFromApi.split("/").pop() || soundFromApi;
-    const candidates = [`triggers/${file}`, `ambience/${file}`, file];
-    for (const k of candidates) {
-      if (SOUND_MAP[k]) return k;
+    // Quick exact hit
+    if (SOUND_MAP[soundFromApi]) return soundFromApi;
+
+    // Split into folder(s) + base
+    const parts = soundFromApi.split("/");
+    const baseRaw = parts.pop() || soundFromApi; // e.g. "default_ambience" or "windy_mountains.mp3"
+    const folders = parts.length ? parts : []; // e.g. ["ambience"]
+    const baseNoExt = baseRaw.replace(/\.[^/.]+$/, ""); // strip ext if present
+    const exts = [".mp3", ".m4a", ".wav", ".ogg"];
+
+    // Candidate keys to try in SOUND_MAP, most specific first
+    const candidates: string[] = [];
+
+    // 1) same folder + with/without ext
+    for (const dir of [...folders, "ambience", "triggers", ""]) {
+      const prefix = dir ? `${dir}/` : "";
+      candidates.push(`${prefix}${baseRaw}`);
+      candidates.push(`${prefix}${baseNoExt}`);
+      for (const ext of exts) candidates.push(`${prefix}${baseNoExt}${ext}`);
     }
 
-    // lightweight heuristics
-    if (/thunder/i.test(soundFromApi)) return "thunder-city-377703.mp3";
+    // 2) Try simple filename only (with common extensions)
+    candidates.push(baseNoExt);
+    for (const ext of exts) candidates.push(`${baseNoExt}${ext}`);
+
+    // Return the first candidate that exists in the map
+    for (const c of candidates) {
+      if (SOUND_MAP[c]) return c;
+    }
+
+    // 3) Fuzzy: look for any key containing or ending with the stem
+    const keys = Object.keys(SOUND_MAP);
+    const fuzzy = keys.find(
+      (k) =>
+        k.endsWith(`/${baseNoExt}`) ||
+        k.endsWith(`${baseNoExt}`) ||
+        k.endsWith(`${baseNoExt}.mp3`) ||
+        k.includes(`/${baseNoExt}.`)
+    );
+    if (fuzzy) return fuzzy;
+
+    // 4) Last resort heuristics (optional)
+    if (/thunder/i.test(soundFromApi))
+      return "triggers/thunder-city-377703.mp3";
     if (/footstep/i.test(soundFromApi))
-      return "footsteps-approaching-316715.mp3";
+      return "triggers/footsteps-approaching-316715.mp3";
     if (/wind/i.test(soundFromApi)) return "triggers/wind.mp3";
     if (/storm/i.test(soundFromApi)) return "triggers/storm.mp3";
+
+    // 5) Hard fallback to your default ambience if present
+    if (SOUND_MAP["ambience/default_ambience.mp3"])
+      return "ambience/default_ambience.mp3";
+
     return undefined;
   }
 
@@ -396,6 +436,11 @@ export default function BookDetailScreen() {
             2
           );
 
+          console.log(
+            "🔑 SOUND_MAP contains:",
+            Object.keys(SOUND_MAP).filter((k) => k.includes("environmental"))
+          );
+
           return {
             id: String(i),
             word: String(t.word || "").toLowerCase(),
@@ -412,9 +457,26 @@ export default function BookDetailScreen() {
       startReadingTimer(0, chunkTriggers); // make sure startReadingTimer prefers trig.soundKey if present
 
       // play ambient "carpet" from API (first track)
+      // play ambient "carpet" from API (first track) with key resolution + logs
       const first = data.carpet_tracks?.[0];
-      if (first && SOUND_MAP[first]) {
-        await SoundManager.playCarpet(SOUND_MAP[first], first);
+      const resolvedCarpetKey = resolveSoundKey(first);
+
+      console.log("🪵 Carpet from API:", { raw: first, resolvedCarpetKey });
+
+      if (resolvedCarpetKey && SOUND_MAP[resolvedCarpetKey]) {
+        try {
+          console.log(
+            `🎵 Playing ambient (API): "${first}" → "${resolvedCarpetKey}"`
+          );
+          await SoundManager.playCarpet(
+            SOUND_MAP[resolvedCarpetKey],
+            resolvedCarpetKey
+          );
+        } catch (e) {
+          console.warn("❗ playCarpet failed (API):", e);
+        }
+      } else if (first) {
+        console.warn("⚠️ No SOUND_MAP match for API carpet:", first);
       }
 
       return; // handled by API
@@ -436,8 +498,17 @@ export default function BookDetailScreen() {
     }
 
     const asset = SOUND_MAP[ambienceKey];
+    console.log("🌲 Fallback ambience:", { ambienceKey, assetFound: !!asset });
+
     if (asset) {
-      await SoundManager.playCarpet(asset, ambienceKey);
+      try {
+        console.log(`🎵 Playing ambient (fallback): "${ambienceKey}"`);
+        await SoundManager.playCarpet(asset, ambienceKey);
+      } catch (e) {
+        console.warn("❗ playCarpet failed (fallback):", e);
+      }
+    } else {
+      console.warn("⚠️ No SOUND_MAP for fallback ambience:", ambienceKey);
     }
   };
 

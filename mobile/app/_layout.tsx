@@ -1,6 +1,11 @@
 import React from "react";
 import { Stack } from "expo-router";
-import { ImageBackground, ActivityIndicator, View } from "react-native";
+import {
+  ImageBackground,
+  ActivityIndicator,
+  View,
+  StyleSheet, // ✅ add this
+} from "react-native";
 import { ThemeProvider, DefaultTheme } from "@react-navigation/native";
 import {
   useFonts,
@@ -28,7 +33,7 @@ export default function RootLayout() {
 
   if (!fontsLoaded) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <View style={styles.center}>
         <ActivityIndicator size="large" />
       </View>
     );
@@ -37,12 +42,34 @@ export default function RootLayout() {
   return (
     <ImageBackground
       source={require("../assets/images/bg-books.jpg")}
-      style={{ flex: 1, width: "100%", height: "100%" }}
+      style={styles.bg}
       resizeMode="cover"
     >
+      {/* optional dim overlay for readability */}
+      <View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFillObject,
+          { backgroundColor: "rgba(0,0,0,0.35)" },
+        ]}
+      />
+
       <ThemeProvider value={CustomTheme}>
-        <Stack screenOptions={{ headerShown: false }} />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: "transparent" }, // let bg show
+            animation: "fade", // smoother with transparent roots
+            freezeOnBlur: true,
+            // detachPreviousScreen: true, // ❌ avoid with transparent backgrounds
+          }}
+        />
       </ThemeProvider>
     </ImageBackground>
   );
 }
+
+const styles = StyleSheet.create({
+  bg: { flex: 1, width: "100%", height: "100%" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+});

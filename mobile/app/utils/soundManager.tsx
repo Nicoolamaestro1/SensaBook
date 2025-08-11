@@ -162,11 +162,11 @@ class SoundManager {
     fadeMs = 900
   ) {
     await this.ensureAudioMode();
-
     let key: string | undefined;
     if (typeof keyOrFade === "string") key = keyOrFade;
     else if (typeof keyOrFade === "number") fadeMs = keyOrFade;
 
+    console.log(`🎵 Ambient carpet requested: "${key}"`);
     // Skip if same ambience already playing
     if (key && this.currentCarpetKey === key && this.carpetSound) return;
     if (!key && this.carpetAssetId === asset && this.carpetSound) return;
@@ -206,7 +206,7 @@ class SoundManager {
     }
 
     // Crossfade with "never-up" clamps and abort checks
-    await this.crossFade(this.carpetSound, next, fadeMs, 0.6, myToken).catch(
+    await this.crossFade(this.carpetSound, next, fadeMs, 0.1, myToken).catch(
       () => {}
     );
 
