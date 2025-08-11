@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Alert,
 } from "react-native";
+import ScreenBackground from "../components/ScreenBackground";
 import { useRouter } from "expo-router";
 import { apiService } from "../../services/api";
 
@@ -28,51 +29,57 @@ export default function LoginScreen() {
       console.log("Login successful:", response);
       router.replace("/library");
     } catch (error: any) {
-      Alert.alert("Error", `Login failed: ${error?.message || "Unknown error"}`);
+      Alert.alert(
+        "Error",
+        `Login failed: ${error?.message || "Unknown error"}`
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
+    <ScreenBackground>
+      <View style={styles.container}>
+        <Text style={styles.title}>Login</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        placeholderTextColor="#aaa"
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          value={email}
+          placeholderTextColor="#aaa"
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        placeholderTextColor="#aaa"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          placeholderTextColor="#aaa"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
 
-      <TouchableOpacity
-        style={[styles.button, isLoading && { opacity: 0.6 }]}
-        onPress={handleLogin}
-        disabled={isLoading}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.buttonText}>
-          {isLoading ? "Logging in..." : "Login"}
-        </Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.button, isLoading && { opacity: 0.6 }]}
+          onPress={handleLogin}
+          disabled={isLoading}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.buttonText}>
+            {isLoading ? "Logging in..." : "Login"}
+          </Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => console.log("Forgot Password pressed")}>
-        <Text style={styles.forgotPassword}>Forgot Password?</Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity
+          onPress={() => console.log("Forgot Password pressed")}
+        >
+          <Text style={styles.forgotPassword}>Forgot Password?</Text>
+        </TouchableOpacity>
+      </View>
+    </ScreenBackground>
   );
 }
 
@@ -83,13 +90,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 24,
-    backgroundColor: "transparent", 
+    backgroundColor: "transparent",
   },
   title: {
     fontSize: 28,
     fontWeight: "700",
     marginBottom: 32,
-    color: "#fff", 
+    color: "#fff",
+    fontFamily: "Montserrat_700Bold",
   },
   input: {
     width: "100%",
@@ -105,7 +113,7 @@ const styles = StyleSheet.create({
     color: "#0A0414",
     fontFamily: "Montserrat_400Regular",
   },
- 
+
   button: {
     width: "100%",
     maxWidth: 340,
@@ -128,6 +136,5 @@ const styles = StyleSheet.create({
     color: "#ddd",
     fontSize: 14,
     fontFamily: "Montserrat_400Regular",
-
   },
 });

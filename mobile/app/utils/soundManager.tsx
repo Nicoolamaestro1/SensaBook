@@ -206,7 +206,7 @@ class SoundManager {
     }
 
     // Crossfade with "never-up" clamps and abort checks
-    await this.crossFade(this.carpetSound, next, fadeMs, 0.1, myToken).catch(
+    await this.crossFade(this.carpetSound, next, fadeMs, 0.6, myToken).catch(
       () => {}
     );
 

@@ -15,6 +15,7 @@ import { useFocusEffect } from "expo-router";
 import { Audio } from "expo-av";
 import { useBooks } from "../hooks/useBooks";
 import SoundManager from "./utils/soundManager";
+import ScreenBackground from "./components/ScreenBackground";
 
 const { width } = Dimensions.get("window");
 
@@ -48,7 +49,7 @@ export default function LibraryScreen() {
   );
 
   return (
-    <>
+    <ScreenBackground>
       {/* Search Input */}
       <View style={styles.searchInputHolder}>
         <Text style={styles.searchText}>Find a Book to Dive Into</Text>
@@ -104,7 +105,7 @@ export default function LibraryScreen() {
           />
         )}
       </View>
-    </>
+    </ScreenBackground>
   );
 }
 
