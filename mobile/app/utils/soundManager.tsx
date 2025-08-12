@@ -23,6 +23,25 @@ class SoundManager {
     return new Promise((r) => setTimeout(r, ms));
   }
 
+  // --- Volumes (defaults) ---
+  private static carpetVolume = 0.6; // 0..1
+  private static triggerVolume = 0.8; // 0..1
+
+  /** Set ambience (carpet) volume, 0..1. Applies immediately if playing. */
+  static async setCarpetVolume(v: number) {
+    this.carpetVolume = Math.max(0, Math.min(1, v));
+    if (this.carpetSound) {
+      try {
+        await this.carpetSound.setVolumeAsync(this.carpetVolume);
+      } catch {}
+    }
+  }
+
+  /** Set trigger one‑shots volume, 0..1. Will be used for future triggers. */
+  static setTriggerVolume(v: number) {
+    this.triggerVolume = Math.max(0, Math.min(1, v));
+  }
+
   private static async ensureAudioMode() {
     if (this.audioModeReady) return;
 
@@ -206,9 +225,13 @@ class SoundManager {
     }
 
     // Crossfade with "never-up" clamps and abort checks
-    await this.crossFade(this.carpetSound, next, fadeMs, 0.6, myToken).catch(
-      () => {}
-    );
+    await this.crossFade(
+      this.carpetSound,
+      next,
+      fadeMs,
+      this.carpetVolume,
+      myToken
+    ).catch(() => {});
 
     // After fade completes (and not aborted), unload old
     if (myToken === this.swapToken && this.carpetSound) {
@@ -321,7 +344,7 @@ class SoundManager {
       sound = created.sound;
       this.activeSounds.add(sound);
 
-      await this.fadeIn(sound, 250, 0.8);
+      await this.fadeIn(sound, 250, this.triggerVolume);
 
       return new Promise<void>((resolve) => {
         sound!.setOnPlaybackStatusUpdate((status: any) => {
