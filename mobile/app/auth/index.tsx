@@ -137,13 +137,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 24,
     fontFamily: "Montserrat_400Regular",
-    paddingTop: 40, // optional: give the top group some air
-    paddingBottom: 40, // optional
+    paddingTop: 40,
+    paddingBottom: 40,
   },
 
   logoHolder: {
     width: "100%",
-    alignItems: "center", // <— center children horizontally
+    alignItems: "center",
     justifyContent: "center",
     marginTop: "30%",
   },
