@@ -24,9 +24,9 @@ import CrossPlatformSlider from "../components/CrossPlatformSlider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-/* =========================
-   Theme
-   ========================= */
+/* =====================================================
+   THEME & CONSTANTS
+   ===================================================== */
 
 const COLORS = {
   card: "#17171c",
@@ -36,24 +36,20 @@ const COLORS = {
   accent: "#FF7A18",
 };
 
-/* =========================
-   Storage keys
-   ========================= */
-
 const STORAGE_KEYS = {
   wpm: "settings.wpm",
   ambVol: "settings.ambienceVolPct",
   trigVol: "settings.triggerVolPct",
 };
 
-/* =========================
-   Helpers
-   ========================= */
-
 const { height, width } = Dimensions.get("window");
 const API_HOST =
   Platform.OS === "android" ? "http://10.0.2.2:8000" : "http://127.0.0.1:8000";
 const API_BASE = `${API_HOST}/soundscape`;
+
+/* =====================================================
+   TYPES
+   ===================================================== */
 
 type SoundscapeResponse = {
   book_id: number;
@@ -63,27 +59,23 @@ type SoundscapeResponse = {
   scene_keyword_counts: Record<string, number>;
   scene_keyword_positions: Record<string, number[]>;
   carpet_tracks: string[];
-  triggered_sounds: Array<{ word: string; position: number; file: string }>;
+  triggered_sounds: Array<{ word: string; position: number; file: string }>; // NOTE: API sometimes uses different keys; we normalize later
 };
 
-async function fetchSoundscape(
-  bookId: string | number,
-  chapterNumber: number,
-  pageNumber: number
-): Promise<SoundscapeResponse> {
-  const res = await fetch(
-    `${API_BASE}/book/${bookId}/chapter${chapterNumber}/page/${pageNumber}`
-  );
-  if (!res.ok) throw new Error(`soundscape ${res.status}`);
-  return res.json();
-}
+type TimeoutId = ReturnType<typeof setTimeout>;
+
+/* =====================================================
+   HELPERS (pure)
+   ===================================================== */
 
 function norm(w: string) {
   return w.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
 }
+
 function tokenize(text: string) {
   return text.split(/\s+/).filter(Boolean);
 }
+
 function snapToNearestToken(
   tokens: string[],
   targetWord: string,
@@ -137,24 +129,35 @@ function resolveSoundKey(soundFromApi?: string): string | undefined {
   return undefined;
 }
 
-/* =========================
-   Component
-   ========================= */
+async function fetchSoundscape(
+  bookId: string | number,
+  chapterNumber: number,
+  pageNumber: number
+): Promise<SoundscapeResponse> {
+  const res = await fetch(
+    `${API_BASE}/book/${bookId}/chapter${chapterNumber}/page/${pageNumber}`
+  );
+  if (!res.ok) throw new Error(`soundscape ${res.status}`);
+  return res.json();
+}
+
+/* =====================================================
+   COMPONENT
+   ===================================================== */
 
 export default function BookDetailScreen() {
+  /* ---------- Navigation & Safe Area ---------- */
   const params = useLocalSearchParams();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [lastCarpet, setLastCarpet] = React.useState<{
-    key?: string;
-    asset?: number;
-  } | null>(null);
 
+  /* ---------- Animation State ---------- */
   const CLOSED_EXTRA = 40; // push closed panel farther offscreen
   const translateY = useSharedValue(-10000);
   const openProg = useSharedValue(0);
   const hasMeasuredRef = React.useRef(false);
 
+  /* ---------- UI Local State ---------- */
   const [optionsOpen, setOptionsOpen] = React.useState(false);
   const [hasShownPanel, setHasShownPanel] = React.useState(false);
   const [optionsHeight, setOptionsHeight] = React.useState(0);
@@ -200,17 +203,23 @@ export default function BookDetailScreen() {
   }, [activeWordIndex]);
 
   const firedTriggerIdsRef = React.useRef<Set<string>>(new Set());
-  type TimeoutId = ReturnType<typeof setTimeout>;
   const wordTimeoutRef = React.useRef<TimeoutId | null>(null);
 
+  /* ---------- Data: Book ---------- */
   const { bookId } = params;
   const { book, loading } = useBook(bookId as string) as {
     book: any;
     loading: boolean;
   };
 
-  /* ---------- Animations ---------- */
+  const currentChapter = book?.chapters?.[currentChapterIndex];
+  const currentPage = currentChapter?.pages?.[currentPageIndex];
+  const totalChapters = book?.chapters?.length || 0;
+  const totalPages = currentChapter?.pages?.length || 0;
 
+  /* =====================================================
+     ANIMATIONS
+     ===================================================== */
   const optionsAnim = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
     opacity: openProg.value,
@@ -225,7 +234,9 @@ export default function BookDetailScreen() {
     openProg.value = withTiming(optionsOpen ? 1 : 0, { duration: 200 });
   }, [optionsOpen, optionsHeight, insets.top]);
 
-  /* ---------- Persist settings ---------- */
+  /* =====================================================
+     PERSIST SETTINGS (AsyncStorage)
+     ===================================================== */
 
   // Load stored values on mount
   React.useEffect(() => {
@@ -258,7 +269,9 @@ export default function BookDetailScreen() {
     []
   );
 
-  /* ---------- URL sync ---------- */
+  /* =====================================================
+     URL SYNC (expo-router)
+     ===================================================== */
 
   useFocusEffect(
     React.useCallback(() => {
@@ -277,7 +290,9 @@ export default function BookDetailScreen() {
     if (params.chunk !== undefined) setCurrentChunkIndex(Number(params.chunk));
   }, [params.chapter, params.page, params.chunk]);
 
-  /* ---------- Text + timing ---------- */
+  /* =====================================================
+     TEXT PAGINATION & TIMING
+     ===================================================== */
 
   const paginateText = React.useCallback(
     (text: string, fontSize = 16, lineHeight = 24) => {
@@ -317,7 +332,7 @@ export default function BookDetailScreen() {
               word: clean,
               position: index,
               timing: index * msPerWord,
-            };
+            } as TriggerWord;
           }
           return null;
         })
@@ -325,6 +340,10 @@ export default function BookDetailScreen() {
     },
     [calculateWordTiming]
   );
+
+  /* =====================================================
+     TIMERS / PLAYBACK CONTROL
+     ===================================================== */
 
   const stopReadingTimer = React.useCallback(() => {
     if (wordTimeoutRef.current) {
@@ -355,12 +374,22 @@ export default function BookDetailScreen() {
         if (trig) {
           setActiveTriggerWords((prev) => new Set(prev).add(trig.id));
 
-          const assetKey = (trig as any).soundKey ?? trig.word;
+          console.log(
+            `Trigger fired: word="${trig.word}", position=${
+              trig.position
+            }, soundKey="${trig.soundKey ?? "(none)"}"`
+          );
+
+          const assetKey = trig.soundKey ?? trig.word;
+          console.log(`Resolved assetKey: "${assetKey}"`);
 
           if (
             typeof assetKey === "string" &&
             assetKey.startsWith("ambience/")
           ) {
+            console.log(
+              `Skipping ambience trigger for "${trig.word}" (assetKey: "${assetKey}")`
+            );
             setActiveTriggerWords((prev) => {
               const s = new Set(prev);
               s.delete(trig.id);
@@ -369,7 +398,11 @@ export default function BookDetailScreen() {
           } else {
             const asset =
               (SOUND_MAP as any)[assetKey] ?? (WORD_TRIGGERS as any)[trig.word];
+
             if (asset) {
+              console.log(
+                `✅ Playing sound for "${trig.word}" using key "${assetKey}"`
+              );
               SoundManager.playTrigger(asset).finally(() => {
                 setActiveTriggerWords((prev) => {
                   const s = new Set(prev);
@@ -378,6 +411,9 @@ export default function BookDetailScreen() {
                 });
               });
             } else {
+              console.warn(
+                `⚠️ No sound found for trigger: "${trig.word}" (assetKey: "${assetKey}")`
+              );
               setActiveTriggerWords((prev) => {
                 const s = new Set(prev);
                 s.delete(trig.id);
@@ -401,12 +437,21 @@ export default function BookDetailScreen() {
     },
     [paginatedChunks, currentChunkIndex, stopReadingTimer]
   );
+  const [lastCarpet, setLastCarpet] = React.useState<{
+    key?: string;
+    asset?: number;
+  } | null>(null);
+
   const ensureAmbienceAfterGesture = React.useCallback(() => {
     if (lastCarpet?.asset) {
       // Safe to call repeatedly; playCarpet will no-op if already playing
       SoundManager.playCarpet(lastCarpet.asset, lastCarpet.key);
     }
   }, [lastCarpet]);
+
+  /* =====================================================
+     OPTIONS PANEL OPEN/CLOSE
+     ===================================================== */
 
   const openOptions = React.useCallback(() => {
     ensureAmbienceAfterGesture();
@@ -420,12 +465,9 @@ export default function BookDetailScreen() {
     startReadingTimer(currentWordIndexRef.current ?? 0);
   }, [startReadingTimer]);
 
-  /* ---------- Book data effects ---------- */
-
-  const currentChapter = book?.chapters?.[currentChapterIndex];
-  const currentPage = currentChapter?.pages?.[currentPageIndex];
-  const totalChapters = book?.chapters?.length || 0;
-  const totalPages = currentChapter?.pages?.length || 0;
+  /* =====================================================
+     NAVIGATION HANDLERS (prev/next)
+     ===================================================== */
 
   const goToNextPage = React.useCallback(() => {
     stopReadingTimer();
@@ -488,6 +530,10 @@ export default function BookDetailScreen() {
     book?.chapters,
   ]);
 
+  /* =====================================================
+     SOUNDSCAPE LOADING (API + fallback)
+     ===================================================== */
+
   const loadSoundscapeForPage = React.useCallback(
     async (chapterIndex?: number, pageIndex?: number) => {
       if (!book) return;
@@ -498,6 +544,9 @@ export default function BookDetailScreen() {
       const chapterNumber = book.chapters?.[ci]?.chapter_number ?? ci + 1;
       const pageNumber =
         book.chapters?.[ci]?.pages?.[pi]?.page_number ?? pi + 1;
+
+      const url = `${API_BASE}/book/${bookId}/chapter${chapterNumber}/page/${pageNumber}`;
+      console.log(`[API Request] Fetching soundscape: ${url}`);
 
       try {
         const data = await fetchSoundscape(
@@ -516,7 +565,9 @@ export default function BookDetailScreen() {
           (data as any).triggered_sounds || []
         )
           .map((t: any, i: number) => {
-            const absolutePos = Number(t.word_position ?? t.position ?? 0);
+            const absolutePos = Number(
+              (t as any).word_position ?? t.position ?? 0
+            );
             const approxInChunk = absolutePos - wordsBeforeThisChunk;
             const snapped = snapToNearestToken(
               chunkTokens,
@@ -535,9 +586,12 @@ export default function BookDetailScreen() {
               position: snapped,
               timing: 0,
               soundKey: safeKey,
-            };
+            } as any as TriggerWord;
           })
-          .filter((tw) => tw.position >= 0 && tw.position < chunkTokens.length);
+          .filter(
+            (tw: TriggerWord) =>
+              tw.position >= 0 && tw.position < chunkTokens.length
+          );
 
         setTriggerWords(chunkTriggers);
         stopReadingTimer();
@@ -585,14 +639,18 @@ export default function BookDetailScreen() {
     ]
   );
 
-  /* ---------- Effects ---------- */
+  /* =====================================================
+     EFFECTS / LIFECYCLE
+     ===================================================== */
 
+  // stop carpet when switching books
   React.useEffect(() => {
     return () => {
       SoundManager.stopCarpet();
     };
   }, [bookId]);
 
+  // paginate when page changes
   React.useEffect(() => {
     if (book && currentPage) {
       const chunks = paginateText(currentPage.content);
@@ -601,6 +659,7 @@ export default function BookDetailScreen() {
     }
   }, [book, currentChapterIndex, currentPageIndex, currentPage, paginateText]);
 
+  // recompute triggers & start timers when chunk changes
   React.useEffect(() => {
     if (
       book &&
@@ -628,27 +687,31 @@ export default function BookDetailScreen() {
     startReadingTimer,
   ]);
 
+  // restart timer on WPM changes
   React.useEffect(() => {
     if (paginatedChunks.length > 0) {
       startReadingTimer(currentWordIndexRef.current ?? 0);
     }
   }, [wpm, startReadingTimer, paginatedChunks.length]);
 
+  // cleanup on screen blur
   useFocusEffect(
-    React.useCallback(() => {
-      return () => {
+    React.useCallback(
+      () => () => {
         SoundManager.stopAll();
         stopReadingTimer();
-      };
-    }, [stopReadingTimer])
+      },
+      [stopReadingTimer]
+    )
   );
 
-  // make sure SoundManager volume matches UI defaults on first mount
+  // ensure SoundManager volumes match UI defaults (once)
   React.useEffect(() => {
     SoundManager.setCarpetVolume(ambienceVolPct / 100);
     SoundManager.setTriggerVolume(triggerVolPct / 100);
-  }, []); // run once
+  }, []);
 
+  // pause audio/timer when app backgrounds
   React.useEffect(() => {
     const sub = AppState.addEventListener("change", (s) => {
       if (s === "background" || s === "inactive") {
@@ -659,7 +722,9 @@ export default function BookDetailScreen() {
     return () => sub.remove();
   }, [stopReadingTimer]);
 
-  /* ---------- UI ---------- */
+  /* =====================================================
+     UI HELPERS
+     ===================================================== */
 
   const renderTextWithHighlights = (text: string) => {
     const words = text.split(/\s+/).filter(Boolean);
@@ -672,7 +737,7 @@ export default function BookDetailScreen() {
             : false;
           const isActiveReading = activeWordIndex === index;
 
-          let style = undefined as any;
+          let style: any = undefined;
           if (isActiveTrigger) style = styles.triggerHighlight;
           else if (isActiveReading) style = styles.wordBorderHighlight;
 
@@ -686,6 +751,10 @@ export default function BookDetailScreen() {
       </Text>
     );
   };
+
+  /* =====================================================
+     RENDER
+     ===================================================== */
 
   if (loading) {
     return (
@@ -714,7 +783,6 @@ export default function BookDetailScreen() {
       (total: number, chapter: any) => total + chapter.pages.length,
       0
     ) || 0;
-
   const currentPageInBook =
     (book?.chapters
       ?.slice(0, currentChapterIndex)
@@ -724,7 +792,6 @@ export default function BookDetailScreen() {
       ) || 0) +
       currentPageIndex +
       1 || 0;
-
   const readingProgress =
     totalPagesInBook > 0 ? currentPageInBook / totalPagesInBook : 0;
 
@@ -733,8 +800,8 @@ export default function BookDetailScreen() {
       <View style={styles.progressContainer}>
         <ProgressBar
           progress={readingProgress}
-          color="#5b4636" // keep as-is
-          style={styles.progressBar} // keep as-is
+          color="#5b4636"
+          style={styles.progressBar}
         />
       </View>
 
@@ -888,9 +955,9 @@ export default function BookDetailScreen() {
   );
 }
 
-/* =========================
-   Styles
-   ========================= */
+/* =====================================================
+   STYLES (unchanged)
+   ===================================================== */
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, paddingTop: 0, position: "relative" },
@@ -940,10 +1007,7 @@ const styles = StyleSheet.create({
     padding: 2,
     borderRadius: 4,
   },
-  wordBorderHighlight: {
-    textDecorationLine: "underline",
-    padding: 2,
-  },
+  wordBorderHighlight: { textDecorationLine: "underline", padding: 2 },
   topTapZone: {
     position: "absolute",
     top: 0,
@@ -1002,9 +1066,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 6,
   },
-  scaleText: {
-    color: COLORS.subtext,
-  },
+  scaleText: { color: COLORS.subtext },
   sliderHint: {
     fontSize: 12,
     color: COLORS.subtext,
