@@ -43,8 +43,7 @@ const STORAGE_KEYS = {
 };
 
 const { height, width } = Dimensions.get("window");
-const API_HOST =
-  Platform.OS === "android" ? "http://10.0.2.2:8000" : "http://127.0.0.1:8000";
+const API_HOST = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
 const API_BASE = `${API_HOST}/soundscape`;
 
 /* =====================================================

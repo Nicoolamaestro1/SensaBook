@@ -1,7 +1,8 @@
-const API_BASE = "http://127.0.0.1:8000/api";
-const SOUNDSCAPE_URL_API = "http://127.0.0.1:8000/";
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
+
+const API_BASE = `${API_BASE_URL}/api`;
 const BOOKS_URL = `${API_BASE}/books`;
-const SOUNDSCAPE_URL = `${SOUNDSCAPE_URL_API}/soundscape`;
+const SOUNDSCAPE_URL = `${API_BASE_URL}/soundscape`;
 
 export const fetchBooks = async () => {
   const res = await fetch(BOOKS_URL);
