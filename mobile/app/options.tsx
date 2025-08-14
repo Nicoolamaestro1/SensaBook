@@ -1,4 +1,3 @@
-// app/options.tsx (or wherever your screen lives)
 import React from "react";
 import { View, StyleSheet } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -8,28 +7,37 @@ import ReadingControls from "./components/ReadingControls";
 import SoundManager from "./utils/soundManager";
 import { useWpm } from "../hooks/useWpm";
 
-// Re‑use the same storage keys the reader uses
+// Storage keys
 const STORAGE_KEYS = Object.freeze({
   wpm: "settings.wpm",
   ambVol: "settings.ambienceVolPct",
   trigVol: "settings.triggerVolPct",
+  fontSize: "settings.fontSizePt",
 });
+
+// Bounds used by the slider
+const FONT_MIN = 12;
+const FONT_MAX = 28;
 
 export default function OptionsScreen() {
   const router = useRouter();
   const { wpm, setWpm } = useWpm();
+
   const [ambienceVolPct, setAmbienceVolPct] = React.useState(60);
   const [triggerVolPct, setTriggerVolPct] = React.useState(80);
+  const [fontSize, setFontSize] = React.useState<number>(16);
 
   // Load saved values once
   React.useEffect(() => {
     (async () => {
       try {
-        const [w, a, t] = await Promise.all([
+        const [w, a, t, f] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEYS.wpm),
           AsyncStorage.getItem(STORAGE_KEYS.ambVol),
           AsyncStorage.getItem(STORAGE_KEYS.trigVol),
+          AsyncStorage.getItem(STORAGE_KEYS.fontSize),
         ]);
+
         if (w) setWpm(Math.max(50, Math.min(600, Number(w))));
         if (a) {
           const n = clamp01pct(Number(a));
@@ -40,6 +48,10 @@ export default function OptionsScreen() {
           const n = clamp01pct(Number(t));
           setTriggerVolPct(n);
           SoundManager.setTriggerVolume(n / 100);
+        }
+        if (f) {
+          const n = clampFont(Number(f));
+          setFontSize(n);
         }
       } catch {
         // ignore
@@ -54,6 +66,7 @@ export default function OptionsScreen() {
           wpm={wpm}
           ambienceVolPct={ambienceVolPct}
           triggerVolPct={triggerVolPct}
+          fontSize={fontSize}
           onWpmChange={(v) => {
             setWpm(v);
             AsyncStorage.setItem(STORAGE_KEYS.wpm, String(v)).catch(() => {});
@@ -74,7 +87,13 @@ export default function OptionsScreen() {
               () => {}
             );
           }}
-          // Optional actions for the two buttons in the component:
+          onFontSizeChange={(v) => {
+            const n = clampFont(v);
+            setFontSize(n);
+            AsyncStorage.setItem(STORAGE_KEYS.fontSize, String(n)).catch(
+              () => {}
+            );
+          }}
           onBackToLibrary={() => {
             router.replace("/library");
           }}
@@ -88,6 +107,11 @@ export default function OptionsScreen() {
 function clamp01pct(n: number) {
   if (Number.isNaN(n)) return 0;
   return Math.max(0, Math.min(100, Math.round(n)));
+}
+
+function clampFont(n: number) {
+  if (!Number.isFinite(n)) return 16;
+  return Math.max(FONT_MIN, Math.min(FONT_MAX, Math.round(n)));
 }
 
 const styles = StyleSheet.create({
