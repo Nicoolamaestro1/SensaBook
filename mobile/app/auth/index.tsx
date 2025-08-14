@@ -8,6 +8,7 @@ import {
   Dimensions,
   Animated,
   Easing,
+  ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import ScreenBackground from "../components/ScreenBackground";
@@ -55,76 +56,78 @@ export default function WelcomeScreen() {
   return (
     <ScreenBackground>
       <View style={styles.container}>
-        <View style={styles.logoHolder}>
-          {/* Logo */}
-          <Animated.Image
-            source={require("../../assets/images/logo.png")}
-            style={{
-              width: 100,
-              height: 100,
-              opacity: logoOpacity,
-              marginBottom: 5,
-              shadowColor: "#C68A4B", // pick your glow color
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 1,
-              shadowRadius: 70,
-              overflow: "visible",
-            }}
-            resizeMode="contain"
-          />
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+          <View style={styles.logoHolder}>
+            {/* Logo */}
+            <Animated.Image
+              source={require("../../assets/images/logo.png")}
+              style={{
+                width: 100,
+                height: 100,
+                opacity: logoOpacity,
+                marginBottom: 5,
+                shadowColor: "#C68A4B", // pick your glow color
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 1,
+                shadowRadius: 70,
+                overflow: "visible",
+              }}
+              resizeMode="contain"
+            />
 
-          <View style={{ flexDirection: "row" }}>
-            {/* Animated "SensaBook" */}
-            {letters.map((ch, i) => (
-              <Animated.Text
-                key={`${ch}-${i}`}
-                style={[
-                  styles.logoTitle,
-                  {
-                    opacity: letterAnims[i].opacity,
-                    transform: [{ translateY: letterAnims[i].translateY }],
-                  },
-                ]}
-              >
-                {ch}
-              </Animated.Text>
-            ))}
+            <View style={{ flexDirection: "row" }}>
+              {/* Animated "SensaBook" */}
+              {letters.map((ch, i) => (
+                <Animated.Text
+                  key={`${ch}-${i}`}
+                  style={[
+                    styles.logoTitle,
+                    {
+                      opacity: letterAnims[i].opacity,
+                      transform: [{ translateY: letterAnims[i].translateY }],
+                    },
+                  ]}
+                >
+                  {ch}
+                </Animated.Text>
+              ))}
+            </View>
+            <Text style={styles.title}>Reading You Can Feel!</Text>
           </View>
-          <Text style={styles.title}>Reading You Can Feel!</Text>
-        </View>
 
-        <View style={styles.buttonGroup}>
-          {/* Button - Sign up */}
-          <TouchableOpacity style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Sign up</Text>
-          </TouchableOpacity>
+          <View style={styles.buttonGroup}>
+            {/* Button - Sign up */}
+            <TouchableOpacity style={styles.primaryButton}>
+              <Text style={styles.primaryButtonText}>Sign up</Text>
+            </TouchableOpacity>
 
-          {/* Button - Google */}
-          <TouchableOpacity style={styles.secondaryButton}>
-            <Image
-              source={require("../../assets/images/google.png")}
-              style={styles.icon}
-            />
-            <Text style={styles.secondaryButtonText}>Continue with Google</Text>
-          </TouchableOpacity>
+            {/* Button - Google */}
+            <TouchableOpacity style={styles.secondaryButton}>
+              <Image
+                source={require("../../assets/images/google.png")}
+                style={styles.icon}
+              />
+              <Text style={styles.secondaryButtonText}>Continue with Google</Text>
+            </TouchableOpacity>
 
-          {/* Button - Apple */}
-          <TouchableOpacity style={styles.secondaryButton}>
-            <Image
-              source={require("../../assets/images/apple.png")}
-              style={styles.icon}
-            />
-            <Text style={styles.secondaryButtonText}>Continue with Apple</Text>
-          </TouchableOpacity>
+            {/* Button - Apple */}
+            <TouchableOpacity style={styles.secondaryButton}>
+              <Image
+                source={require("../../assets/images/apple.png")}
+                style={styles.icon}
+              />
+              <Text style={styles.secondaryButtonText}>Continue with Apple</Text>
+            </TouchableOpacity>
 
-          {/* Button - Login */}
-          <TouchableOpacity
-            style={[styles.secondaryButton, styles.lastButton]}
-            onPress={() => router.push("/auth/login")}
-          >
-            <Text style={styles.secondaryButtonText}>Log in</Text>
-          </TouchableOpacity>
-        </View>
+            {/* Button - Login */}
+            <TouchableOpacity
+              style={[styles.secondaryButton, styles.lastButton]}
+              onPress={() => router.push("/auth/login")}
+            >
+              <Text style={styles.secondaryButtonText}>Log in</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </View>
     </ScreenBackground>
   );
@@ -139,6 +142,8 @@ const styles = StyleSheet.create({
     fontFamily: "Montserrat_400Regular",
     paddingTop: 40,
     paddingBottom: 40,
+    minHeight: "100%",
+    overflow: "scroll",
   },
 
   logoHolder: {
