@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   AppState,
   Dimensions,
+  ScrollView,
 } from "react-native";
 import { ProgressBar } from "react-native-paper";
 import Animated, {
@@ -61,6 +62,8 @@ const STORAGE_KEYS = Object.freeze({
 const FONT_MIN = 12;
 const FONT_MAX = 28;
 
+const { height: SCREEN_H } = Dimensions.get("window");
+const PANEL_MARGIN = 12;
 const { height, width } = Dimensions.get("window");
 
 /* =====================================================
@@ -711,44 +714,63 @@ export default function BookDetailScreen() {
                 hasMeasuredRef.current = true;
               }
             }}
-            style={[styles.optionsPanel, { top: insets.top }, optionsAnim]}
+            style={[
+              styles.optionsPanel,
+              {
+                top: insets.top,
+                // ✅ constrain height so ScrollView can actually scroll
+                maxHeight: SCREEN_H - insets.top - PANEL_MARGIN * 2,
+                overflow: "hidden", // clip big content behind rounded corners
+              },
+              optionsAnim,
+            ]}
           >
-            <ReadingControls
-              wpm={wpm}
-              ambienceVolPct={ambienceVolPct}
-              triggerVolPct={triggerVolPct}
-              fontSize={fontSize}
-              onWpmChange={(v) => {
-                setWpm(v);
-                save(STORAGE_KEYS.wpm, v);
+            <ScrollView
+              style={{ flex: 1 }} // ✅ fill the constrained panel
+              contentContainerStyle={{
+                padding: 16,
+                paddingBottom: 16 + insets.bottom, // a little extra for safe-area
               }}
-              onAmbienceChange={(v) => {
-                setAmbienceVolPct(v);
-                SoundManager.setCarpetVolume(v / 100);
-                save(STORAGE_KEYS.ambVol, v);
-              }}
-              onTriggerChange={(v) => {
-                setTriggerVolPct(v);
-                SoundManager.setTriggerVolume(v / 100);
-                save(STORAGE_KEYS.trigVol, v);
-              }}
-              onFontSizeChange={(v) => {
-                /* ✅ pass handler */
-                const n = clampFont(v);
-                setFontSize(n);
-                save(STORAGE_KEYS.fontSize, n);
-              }}
-              onBackToLibrary={() => {
-                setOptionsOpen(false);
-                router.replace("/library");
-              }}
-              onClose={closeOptions}
-              colors={{
-                text: COLORS.text,
-                subtext: COLORS.subtext,
-                accent: COLORS.accent,
-              }}
-            />
+              showsVerticalScrollIndicator
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled
+            >
+              <ReadingControls
+                wpm={wpm}
+                ambienceVolPct={ambienceVolPct}
+                triggerVolPct={triggerVolPct}
+                fontSize={fontSize}
+                onWpmChange={(v) => {
+                  setWpm(v);
+                  save(STORAGE_KEYS.wpm, v);
+                }}
+                onAmbienceChange={(v) => {
+                  setAmbienceVolPct(v);
+                  SoundManager.setCarpetVolume(v / 100);
+                  save(STORAGE_KEYS.ambVol, v);
+                }}
+                onTriggerChange={(v) => {
+                  setTriggerVolPct(v);
+                  SoundManager.setTriggerVolume(v / 100);
+                  save(STORAGE_KEYS.trigVol, v);
+                }}
+                onFontSizeChange={(v) => {
+                  const n = clampFont(v);
+                  setFontSize(n);
+                  save(STORAGE_KEYS.fontSize, n);
+                }}
+                onBackToLibrary={() => {
+                  setOptionsOpen(false);
+                  router.replace("/library");
+                }}
+                onClose={closeOptions}
+                colors={{
+                  text: COLORS.text,
+                  subtext: COLORS.subtext,
+                  accent: COLORS.accent,
+                }}
+              />
+            </ScrollView>
           </Animated.View>
         )}
       </View>
