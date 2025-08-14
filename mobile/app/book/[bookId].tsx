@@ -32,7 +32,7 @@ import {
   snapToNearestToken,
   paginateText,
   computeReadingProgress,
-} from "../lib/reading";
+} from "../utils/reading";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Book, Chapter, Page } from "../../types/book";
