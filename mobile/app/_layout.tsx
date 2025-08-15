@@ -2,6 +2,7 @@
 import React from "react";
 import { Stack } from "expo-router";
 import { ThemeProvider, DefaultTheme } from "@react-navigation/native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
   useFonts,
   Montserrat_300Light,
@@ -24,14 +25,16 @@ export default function RootLayout() {
   });
 
   return (
-    <ThemeProvider value={CustomTheme}>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          animation: "slide_from_right",
-          contentStyle: { backgroundColor: "#0d0b1a" }, // opaque screen view
-        }}
-      />
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider value={CustomTheme}>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            animation: "slide_from_right",
+            contentStyle: { backgroundColor: "#0d0b1a" }, // opaque screen view
+          }}
+        />
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
