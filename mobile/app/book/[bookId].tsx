@@ -664,7 +664,7 @@ export default function BookDetailScreen() {
         />
       </View>
 
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <TouchableOpacity
           style={styles.topTapZone}
           onPress={openOptions}
@@ -731,8 +731,8 @@ export default function BookDetailScreen() {
                 padding: 16,
                 paddingBottom: 16 + insets.bottom, // a little extra for safe-area
               }}
-              showsVerticalScrollIndicator
               keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
               nestedScrollEnabled
             >
               <ReadingControls
@@ -787,7 +787,12 @@ function clampFont(n: number) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, paddingTop: 0, position: "relative" },
+  container: {
+    flex: 1,
+    padding: 16,
+    paddingTop: 0,
+    position: "relative",
+  },
   leftTouchable: {
     position: "absolute",
     top: "20%",

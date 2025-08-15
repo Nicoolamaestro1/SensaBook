@@ -16,6 +16,10 @@ import { Audio } from "expo-av";
 import { useBooks } from "../hooks/useBooks";
 import SoundManager from "./utils/soundManager";
 import ScreenBackground from "./components/ScreenBackground";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 
@@ -50,61 +54,63 @@ export default function LibraryScreen() {
 
   return (
     <ScreenBackground>
-      {/* Search Input */}
-      <View style={styles.searchInputHolder}>
-        <Text style={styles.searchText}>Find a Book to Dive Into</Text>
-        <TextInput
-          style={styles.searchInput}
-          placeholder=""
-          placeholderTextColor="#888"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          autoCorrect={false}
-          autoCapitalize="none"
-        />
-      </View>
-      <View style={styles.container}>
-        {loading ? (
-          <ActivityIndicator
-            style={{ marginTop: 24 }}
-            size="large"
-            color="#2563eb"
+      <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
+        {/* Search Input */}
+        <View style={styles.searchInputHolder}>
+          <Text style={styles.searchText}>Find a Book to Dive Into</Text>
+          <TextInput
+            style={styles.searchInput}
+            placeholder=""
+            placeholderTextColor="#888"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCorrect={false}
+            autoCapitalize="none"
           />
-        ) : (
-          <FlatList
-            contentContainerStyle={styles.row}
-            data={filteredBooks}
-            keyExtractor={(item) => item.id.toString()}
-            numColumns={3}
-            renderItem={({ item }) => (
-              <View style={[styles.cardWrapper, { flex: 1 / 3 }]}>
-                <TouchableOpacity
-                  style={styles.card}
-                  onPress={() => handleBookPress(item.id)}
-                  activeOpacity={0.85}
+        </View>
+        <View style={styles.container}>
+          {loading ? (
+            <ActivityIndicator
+              style={{ marginTop: 24 }}
+              size="large"
+              color="#2563eb"
+            />
+          ) : (
+            <FlatList
+              contentContainerStyle={styles.row}
+              data={filteredBooks}
+              keyExtractor={(item) => item.id.toString()}
+              numColumns={3}
+              renderItem={({ item }) => (
+                <View style={[styles.cardWrapper, { flex: 1 / 3 }]}>
+                  <TouchableOpacity
+                    style={styles.card}
+                    onPress={() => handleBookPress(item.id)}
+                    activeOpacity={0.85}
+                  >
+                    {item.cover_url ? (
+                      <Image
+                        source={{ uri: item.cover_url }}
+                        style={styles.cardImage}
+                        resizeMode="cover"
+                      />
+                    ) : null}
+                    <Text style={styles.cardSubtitle}>{item.author}</Text>
+                    <Text style={styles.cardTitle}>{item.title}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              ListEmptyComponent={
+                <Text
+                  style={{ textAlign: "center", color: "#fff", marginTop: 16 }}
                 >
-                  {item.cover_url ? (
-                    <Image
-                      source={{ uri: item.cover_url }}
-                      style={styles.cardImage}
-                      resizeMode="cover"
-                    />
-                  ) : null}
-                  <Text style={styles.cardSubtitle}>{item.author}</Text>
-                  <Text style={styles.cardTitle}>{item.title}</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            ListEmptyComponent={
-              <Text
-                style={{ textAlign: "center", color: "#fff", marginTop: 16 }}
-              >
-                No books found.
-              </Text>
-            }
-          />
-        )}
-      </View>
+                  No books found.
+                </Text>
+              }
+            />
+          )}
+        </View>
+      </SafeAreaView>
     </ScreenBackground>
   );
 }
