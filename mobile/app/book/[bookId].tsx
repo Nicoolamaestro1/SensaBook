@@ -118,7 +118,8 @@ export default function BookDetailScreen() {
 
   // Derived line height for pagination & rendering
   const lineHeight = Math.max(Math.round(fontSize * 1.5), fontSize + 6); // simple readable rule
-
+  const titleFontSize = Math.round(fontSize * 1.125); // 18 when body is 16
+  const titleLineHeight = Math.round(titleFontSize * 1.35);
   // Refs for timers/indices
   const wpmRef = React.useRef(wpm);
   React.useEffect(() => {
@@ -682,7 +683,12 @@ export default function BookDetailScreen() {
         />
 
         <View style={styles.pageCard}>
-          <Text style={styles.chapterTitle}>
+          <Text
+            style={[
+              styles.chapterTitle,
+              { fontSize: titleFontSize, lineHeight: titleLineHeight },
+            ]}
+          >
             {currentChapter?.title
               ? `Chapter: ${currentChapter.title}`
               : `Chapter ${currentChapter?.chapter_number}`}
@@ -816,7 +822,6 @@ const styles = StyleSheet.create({
   chapterTitle: {
     marginTop: 16,
     fontWeight: "bold",
-    fontSize: 18,
     color: "#5b4636",
     marginBottom: 8,
   },

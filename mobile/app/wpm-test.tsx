@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Animated,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -99,8 +100,19 @@ export default function WpmTestScreen() {
     const safeWpm = clamp(rawWpm, 50, 600);
     setWpm(safeWpm);
     await AsyncStorage.setItem(STORAGE_WPM_KEY, String(safeWpm));
+    Alert.alert(
+      "WPM set",
+      `Your reading speed is ${safeWpm} wpm.\n\nYou can adjust it anytime in the Options panel or the book page Options dropdown.`,
+      [
+        {
+          text: "OK",
+          onPress: () => router.replace("/library"),
+        },
+      ],
+      { cancelable: false }
+    );
 
-    // Send them to the library (or wherever you want next)
+    // Popup, then navigate
     router.replace("/library");
   }, [startedAt, totalWords, setWpm, router, startFade]);
 
@@ -170,7 +182,7 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingTop: 0,
     position: "relative",
-    backgroundColor: "rgb(245, 236, 217))",
+    backgroundColor: "rgb(245, 236, 217)",
   },
 
   // Transparent card like Book page
