@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   AppState,
   Dimensions,
+  ScrollView,
 } from "react-native";
 import { ProgressBar } from "react-native-paper";
 import Animated, {
@@ -39,10 +40,10 @@ import type { Book, Chapter, Page } from "../../types/book";
 import type { SoundscapeResponse } from "../../types/soundscape";
 import ReadingControls from "../components/ReadingControls";
 import { buildSoundscapeUrl, logSoundscapeRequest } from "../config/api";
+
 /* =====================================================
    THEME & CONSTANTS
    ===================================================== */
-
 const COLORS = Object.freeze({
   card: "#17171c",
   text: "#EAEAF0",
@@ -55,20 +56,24 @@ const STORAGE_KEYS = Object.freeze({
   wpm: "settings.wpm",
   ambVol: "settings.ambienceVolPct",
   trigVol: "settings.triggerVolPct",
+  fontSize: "settings.fontSizePt", // ✅ add font-size key
 });
 
+const FONT_MIN = 12;
+const FONT_MAX = 28;
+
+const { height: SCREEN_H } = Dimensions.get("window");
+const PANEL_MARGIN = 12;
 const { height, width } = Dimensions.get("window");
 
 /* =====================================================
    TYPES
    ===================================================== */
-
 type TimeoutId = ReturnType<typeof setTimeout>;
 
 /* =====================================================
    COMPONENT
    ===================================================== */
-
 export default function BookDetailScreen() {
   /* ---------- Navigation & Safe Area ---------- */
   const params = useLocalSearchParams();
@@ -76,7 +81,7 @@ export default function BookDetailScreen() {
   const insets = useSafeAreaInsets();
 
   /* ---------- Animation State ---------- */
-  const CLOSED_EXTRA = 40; // push closed panel farther offscreen
+  const CLOSED_EXTRA = 40;
   const translateY = useSharedValue(-10000);
   const openProg = useSharedValue(0);
   const hasMeasuredRef = React.useRef(false);
@@ -105,10 +110,14 @@ export default function BookDetailScreen() {
     null
   );
 
-  // Volumes (percent) + WPM
+  // Volumes (percent) + WPM + FONT SIZE ✅
   const [ambienceVolPct, setAmbienceVolPct] = React.useState(60);
   const [triggerVolPct, setTriggerVolPct] = React.useState(80);
+  const [fontSize, setFontSize] = React.useState<number>(16); // ✅ add font size state
   const { wpm, setWpm } = useWpm();
+
+  // Derived line height for pagination & rendering
+  const lineHeight = Math.max(Math.round(fontSize * 1.5), fontSize + 6); // simple readable rule
 
   // Refs for timers/indices
   const wpmRef = React.useRef(wpm);
@@ -163,15 +172,14 @@ export default function BookDetailScreen() {
   /* =====================================================
      PERSIST SETTINGS (AsyncStorage)
      ===================================================== */
-
-  // Load stored values on mount
   React.useEffect(() => {
     (async () => {
       try {
-        const [w, a, t] = await Promise.all([
+        const [w, a, t, f] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEYS.wpm),
           AsyncStorage.getItem(STORAGE_KEYS.ambVol),
           AsyncStorage.getItem(STORAGE_KEYS.trigVol),
+          AsyncStorage.getItem(STORAGE_KEYS.fontSize), // ✅ load font size
         ]);
         if (w) setWpm(Math.max(50, Math.min(600, Number(w))));
         if (a) {
@@ -184,13 +192,16 @@ export default function BookDetailScreen() {
           setTriggerVolPct(n);
           SoundManager.setTriggerVolume(n / 100);
         }
+        if (f) {
+          const n = clampFont(Number(f));
+          setFontSize(n);
+        }
       } catch {
         // swallow
       }
     })();
   }, [setWpm]);
 
-  // Simple saver helper
   const save = React.useCallback(
     (key: string, value: number | string) =>
       AsyncStorage.setItem(key, String(value)).catch(() => {}),
@@ -200,7 +211,6 @@ export default function BookDetailScreen() {
   /* =====================================================
      URL SYNC (expo-router)
      ===================================================== */
-
   useFocusEffect(
     React.useCallback(() => {
       router.setParams({
@@ -221,7 +231,6 @@ export default function BookDetailScreen() {
   /* =====================================================
      TIMERS / PLAYBACK CONTROL
      ===================================================== */
-
   const stopReadingTimer = React.useCallback(() => {
     if (wordTimeoutRef.current) {
       clearTimeout(wordTimeoutRef.current);
@@ -252,12 +261,10 @@ export default function BookDetailScreen() {
           setActiveTriggerWords((prev) => new Set(prev).add(trig.id));
 
           const assetKey = trig.soundKey ?? trig.word;
-
           if (
             typeof assetKey === "string" &&
             assetKey.startsWith("ambience/")
           ) {
-            // skip ambience as trigger
             setActiveTriggerWords((prev) => {
               const s = new Set(prev);
               s.delete(trig.id);
@@ -265,7 +272,6 @@ export default function BookDetailScreen() {
             });
           } else {
             const asset = SOUND_MAP[assetKey] ?? WORD_TRIGGERS[trig.word];
-
             if (asset) {
               SoundManager.playTrigger(asset).finally(() => {
                 setActiveTriggerWords((prev) => {
@@ -275,7 +281,6 @@ export default function BookDetailScreen() {
                 });
               });
             } else {
-              // no asset found; just clear highlight
               setActiveTriggerWords((prev) => {
                 const s = new Set(prev);
                 s.delete(trig.id);
@@ -307,7 +312,6 @@ export default function BookDetailScreen() {
 
   const ensureAmbienceAfterGesture = React.useCallback(() => {
     if (lastCarpet?.asset) {
-      // Safe to call repeatedly; playCarpet will no-op if already playing
       SoundManager.playCarpet(lastCarpet.asset, lastCarpet.key);
     }
   }, [lastCarpet]);
@@ -315,7 +319,6 @@ export default function BookDetailScreen() {
   /* =====================================================
      OPTIONS PANEL OPEN/CLOSE
      ===================================================== */
-
   const openOptions = React.useCallback(() => {
     ensureAmbienceAfterGesture();
     stopReadingTimer();
@@ -329,9 +332,8 @@ export default function BookDetailScreen() {
   }, [startReadingTimer]);
 
   /* =====================================================
-     NAVIGATION HANDLERS (prev/next)
+     NAVIGATION
      ===================================================== */
-
   const goToNextPage = React.useCallback(() => {
     stopReadingTimer();
     ensureAmbienceAfterGesture();
@@ -394,9 +396,8 @@ export default function BookDetailScreen() {
   ]);
 
   /* =====================================================
-     SOUNDSCAPE LOADING (API + fallback)
+     SOUNDSCAPE LOADING
      ===================================================== */
-
   const loadSoundscapeForPage = React.useCallback(
     async (chapterIndex?: number, pageIndex?: number) => {
       if (!book) return;
@@ -408,7 +409,6 @@ export default function BookDetailScreen() {
       const pageNumber =
         book.chapters?.[ci]?.pages?.[pi]?.page_number ?? pi + 1;
 
-      // console.log remove after
       logSoundscapeRequest(Number(bookId), chapterNumber, pageNumber);
 
       try {
@@ -461,7 +461,7 @@ export default function BookDetailScreen() {
         const resolved = resolveSoundKey(first);
         if (resolved && SOUND_MAP[resolved]) {
           const asset = SOUND_MAP[resolved];
-          setLastCarpet({ key: resolved, asset }); // remember for retries
+          setLastCarpet({ key: resolved, asset });
           await SoundManager.playCarpet(asset, resolved);
         }
         return;
@@ -469,7 +469,7 @@ export default function BookDetailScreen() {
         console.log("Soundscape API fallback:", err);
       }
 
-      // fallback to local mapping if API fails
+      // fallback
       const page = book?.chapters?.[ci]?.pages?.[pi];
       let ambienceKey = page?.ambient as string | undefined;
       if (!ambienceKey) {
@@ -502,28 +502,32 @@ export default function BookDetailScreen() {
   /* =====================================================
      EFFECTS / LIFECYCLE
      ===================================================== */
-
-  // stop carpet when switching books
   React.useEffect(() => {
     return () => {
       SoundManager.stopCarpet();
     };
   }, [bookId]);
 
-  // paginate when page changes
+  // ✅ paginate using current font metrics
   React.useEffect(() => {
     if (book && currentPage) {
       const chunks = paginateText(
         currentPage.content,
         { width, height },
-        { fontSize: 16, lineHeight: 24 }
+        { fontSize, lineHeight } // ✅ use live font size
       );
       setPaginatedChunks(chunks);
       setCurrentChunkIndex(0);
     }
-  }, [book, currentChapterIndex, currentPageIndex, currentPage]);
+  }, [
+    book,
+    currentChapterIndex,
+    currentPageIndex,
+    currentPage,
+    fontSize,
+    lineHeight,
+  ]);
 
-  // recompute triggers & start timers when chunk changes
   React.useEffect(() => {
     if (
       book &&
@@ -593,11 +597,10 @@ export default function BookDetailScreen() {
   /* =====================================================
      UI HELPERS
      ===================================================== */
-
   const renderTextWithHighlights = (text: string) => {
     const words = text.split(/\s+/).filter(Boolean);
     return (
-      <Text style={styles.pageText}>
+      <Text style={[styles.pageText, { fontSize, lineHeight }]}>
         {words.map((word, index) => {
           const trigger = triggerWords.find((t) => t.position === index);
           const isActiveTrigger = trigger
@@ -623,7 +626,6 @@ export default function BookDetailScreen() {
   /* =====================================================
      RENDER
      ===================================================== */
-
   if (loading) {
     return (
       <View style={styles.center}>
@@ -692,7 +694,6 @@ export default function BookDetailScreen() {
           {currentPageInBook} of {totalPagesInBook} pages
         </Text>
 
-        {/* Backdrop */}
         {optionsOpen && (
           <TouchableOpacity
             activeOpacity={1}
@@ -701,7 +702,6 @@ export default function BookDetailScreen() {
           />
         )}
 
-        {/* Panel mounts after first open to avoid initial flash */}
         {(optionsOpen || hasShownPanel) && (
           <Animated.View
             onLayout={(e) => {
@@ -709,47 +709,68 @@ export default function BookDetailScreen() {
               setOptionsHeight(h);
               if (!hasMeasuredRef.current) {
                 const closedY = -(h + insets.top + CLOSED_EXTRA);
-                translateY.value = closedY; // start closed
+                translateY.value = closedY;
                 openProg.value = 0;
                 hasMeasuredRef.current = true;
               }
             }}
-            style={[styles.optionsPanel, { top: insets.top }, optionsAnim]}
+            style={[
+              styles.optionsPanel,
+              {
+                top: insets.top,
+                // ✅ constrain height so ScrollView can actually scroll
+                maxHeight: SCREEN_H - insets.top - PANEL_MARGIN * 2,
+                overflow: "hidden", // clip big content behind rounded corners
+              },
+              optionsAnim,
+            ]}
           >
-            <ReadingControls
-              wpm={wpm}
-              ambienceVolPct={ambienceVolPct}
-              triggerVolPct={triggerVolPct}
-              onWpmChange={(v) => {
-                setWpm(v);
-                AsyncStorage.setItem("settings.wpm", String(v)).catch(() => {});
+            <ScrollView
+              style={{ flex: 1 }} // ✅ fill the constrained panel
+              contentContainerStyle={{
+                padding: 16,
+                paddingBottom: 16 + insets.bottom, // a little extra for safe-area
               }}
-              onAmbienceChange={(v) => {
-                setAmbienceVolPct(v);
-                SoundManager.setCarpetVolume(v / 100);
-                AsyncStorage.setItem(
-                  "settings.ambienceVolPct",
-                  String(v)
-                ).catch(() => {});
-              }}
-              onTriggerChange={(v) => {
-                setTriggerVolPct(v);
-                SoundManager.setTriggerVolume(v / 100);
-                AsyncStorage.setItem("settings.triggerVolPct", String(v)).catch(
-                  () => {}
-                );
-              }}
-              onBackToLibrary={() => {
-                setOptionsOpen(false);
-                router.replace("/library");
-              }}
-              onClose={closeOptions}
-              colors={{
-                text: COLORS.text,
-                subtext: COLORS.subtext,
-                accent: COLORS.accent,
-              }}
-            />
+              showsVerticalScrollIndicator
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled
+            >
+              <ReadingControls
+                wpm={wpm}
+                ambienceVolPct={ambienceVolPct}
+                triggerVolPct={triggerVolPct}
+                fontSize={fontSize}
+                onWpmChange={(v) => {
+                  setWpm(v);
+                  save(STORAGE_KEYS.wpm, v);
+                }}
+                onAmbienceChange={(v) => {
+                  setAmbienceVolPct(v);
+                  SoundManager.setCarpetVolume(v / 100);
+                  save(STORAGE_KEYS.ambVol, v);
+                }}
+                onTriggerChange={(v) => {
+                  setTriggerVolPct(v);
+                  SoundManager.setTriggerVolume(v / 100);
+                  save(STORAGE_KEYS.trigVol, v);
+                }}
+                onFontSizeChange={(v) => {
+                  const n = clampFont(v);
+                  setFontSize(n);
+                  save(STORAGE_KEYS.fontSize, n);
+                }}
+                onBackToLibrary={() => {
+                  setOptionsOpen(false);
+                  router.replace("/library");
+                }}
+                onClose={closeOptions}
+                colors={{
+                  text: COLORS.text,
+                  subtext: COLORS.subtext,
+                  accent: COLORS.accent,
+                }}
+              />
+            </ScrollView>
           </Animated.View>
         )}
       </View>
@@ -758,8 +779,12 @@ export default function BookDetailScreen() {
 }
 
 /* =====================================================
-   STYLES
+   HELPERS & STYLES
    ===================================================== */
+function clampFont(n: number) {
+  if (!Number.isFinite(n)) return 16;
+  return Math.max(FONT_MIN, Math.min(FONT_MAX, Math.round(n)));
+}
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, paddingTop: 0, position: "relative" },
@@ -779,12 +804,9 @@ const styles = StyleSheet.create({
     width: "40%",
     zIndex: 10,
   },
-
-  /* keep progress styles unchanged */
   progressContainer: { marginBottom: 0, zIndex: 1 },
   progressBar: { height: 2, backgroundColor: "transparent" },
   progressText: { color: "#5b4636", fontSize: 12, textAlign: "center" },
-
   pageCard: { flex: 1, backgroundColor: "transparent", marginBottom: 16 },
   chapterTitle: {
     marginTop: 16,
@@ -794,13 +816,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   pageText: {
-    fontSize: 16,
+    // fontSize & lineHeight are injected dynamically
     color: "#5b4636",
-    lineHeight: 24,
     textAlign: "justify" as const,
   },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-
   triggerHighlight: {
     backgroundColor: "#ff6b6b",
     color: "#fff",
@@ -816,7 +836,6 @@ const styles = StyleSheet.create({
     height: "20%",
     zIndex: 20,
   },
-
   backdrop: {
     position: "absolute",
     top: 0,
@@ -826,7 +845,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.45)",
     zIndex: 40,
   },
-
   optionsPanel: {
     position: "absolute",
     left: 12,

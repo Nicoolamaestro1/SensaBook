@@ -1,4 +1,3 @@
-// app/components/ReadingControls.tsx
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import CrossPlatformSlider from "./CrossPlatformSlider";
@@ -13,9 +12,11 @@ type Props = {
   wpm: number;
   ambienceVolPct: number;
   triggerVolPct: number;
+  fontSize: number; // ← required now
   onWpmChange: (v: number) => void;
   onAmbienceChange: (v: number) => void;
   onTriggerChange: (v: number) => void;
+  onFontSizeChange: (v: number) => void; // ← required now
   onBackToLibrary?: () => void;
   onClose?: () => void;
   hideClose?: boolean;
@@ -26,9 +27,11 @@ export default function ReadingControls({
   wpm,
   ambienceVolPct,
   triggerVolPct,
+  fontSize,
   onWpmChange,
   onAmbienceChange,
   onTriggerChange,
+  onFontSizeChange,
   onBackToLibrary,
   onClose,
   hideClose = false,
@@ -44,6 +47,7 @@ export default function ReadingControls({
       <Text style={[styles.sliderTitle, { color: c.text }]}>Reading speed</Text>
       <Text style={[styles.sliderValue, { color: c.accent }]}>{wpm} wpm</Text>
       <CrossPlatformSlider
+        testID="slider:wpm"
         minimumValue={50}
         maximumValue={600}
         step={10}
@@ -60,7 +64,36 @@ export default function ReadingControls({
       <Text style={[styles.sliderHint, { color: c.subtext }]}>
         Tip: 180–250 wpm is comfy for most people.
       </Text>
-
+      <hr style={styles.horizontalLine} />
+      {/* Font Size */}
+      <Text style={[styles.sliderTitle, { color: c.text }]}>Font size</Text>
+      <Text style={[styles.sliderValue, { color: c.accent }]}>
+        {fontSize} pt
+      </Text>
+      <CrossPlatformSlider
+        testID="slider:fontSize"
+        value={Number.isFinite(fontSize as number) ? fontSize : 16}
+        onValueChange={onFontSizeChange}
+        minimumValue={12}
+        maximumValue={28}
+        step={1}
+        minimumTrackTintColor={c.accent}
+        maximumTrackTintColor="rgba(255,255,255,0.2)"
+        thumbTintColor={c.accent}
+        accessibilityLabel="Font size slider"
+      />
+      <View style={[styles.sliderScale, { alignItems: "flex-end" }]}>
+        <Text style={{ color: c.subtext, fontSize: 12, lineHeight: 16 }}>
+          A
+        </Text>
+        <Text style={{ color: c.subtext, fontSize: 22, lineHeight: 24 }}>
+          A
+        </Text>
+      </View>
+      <Text style={[styles.sliderHint, { color: c.subtext }]}>
+        Affects the size of book text.
+      </Text>
+      <hr style={styles.horizontalLine} />
       {/* Ambience */}
       <Text style={[styles.sliderTitle, { color: c.text }]}>
         Ambience volume
@@ -69,6 +102,7 @@ export default function ReadingControls({
         {ambienceVolPct}%
       </Text>
       <CrossPlatformSlider
+        testID="slider:ambience"
         minimumValue={0}
         maximumValue={100}
         step={1}
@@ -85,7 +119,7 @@ export default function ReadingControls({
       <Text style={[styles.sliderHint, { color: c.subtext }]}>
         Controls the background ambience (loops).
       </Text>
-
+      <hr style={styles.horizontalLine} />
       {/* Triggers */}
       <Text style={[styles.sliderTitle, { color: c.text }]}>
         Trigger volume
@@ -94,6 +128,7 @@ export default function ReadingControls({
         {triggerVolPct}%
       </Text>
       <CrossPlatformSlider
+        testID="slider:trigger"
         minimumValue={0}
         maximumValue={100}
         step={1}
@@ -110,7 +145,7 @@ export default function ReadingControls({
       <Text style={[styles.sliderHint, { color: c.subtext }]}>
         Controls one‑shot sound effects on trigger words.
       </Text>
-
+      <hr style={styles.horizontalLine} />
       {onBackToLibrary && (
         <TouchableOpacity
           onPress={onBackToLibrary}
@@ -157,9 +192,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     alignSelf: "center",
   },
-  primaryBtnText: {
-    textAlign: "center",
-    fontSize: 16,
-    fontWeight: "600",
+  primaryBtnText: { textAlign: "center", fontSize: 16, fontWeight: "600" },
+  horizontalLine: {
+    width: "100%",
+    borderColor: "#eee",
+    borderWidth: 1,
+    borderTopWidth: 0,
+    marginTop: 15,
+    marginBottom: 15,
   },
 });
