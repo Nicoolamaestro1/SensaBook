@@ -118,7 +118,8 @@ export default function BookDetailScreen() {
 
   // Derived line height for pagination & rendering
   const lineHeight = Math.max(Math.round(fontSize * 1.5), fontSize + 6); // simple readable rule
-
+  const titleFontSize = Math.round(fontSize * 1.125); // 18 when body is 16
+  const titleLineHeight = Math.round(titleFontSize * 1.35);
   // Refs for timers/indices
   const wpmRef = React.useRef(wpm);
   React.useEffect(() => {
@@ -664,7 +665,7 @@ export default function BookDetailScreen() {
         />
       </View>
 
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <TouchableOpacity
           style={styles.topTapZone}
           onPress={openOptions}
@@ -682,7 +683,12 @@ export default function BookDetailScreen() {
         />
 
         <View style={styles.pageCard}>
-          <Text style={styles.chapterTitle}>
+          <Text
+            style={[
+              styles.chapterTitle,
+              { fontSize: titleFontSize, lineHeight: titleLineHeight },
+            ]}
+          >
             {currentChapter?.title
               ? `Chapter: ${currentChapter.title}`
               : `Chapter ${currentChapter?.chapter_number}`}
@@ -731,8 +737,8 @@ export default function BookDetailScreen() {
                 padding: 16,
                 paddingBottom: 16 + insets.bottom, // a little extra for safe-area
               }}
-              showsVerticalScrollIndicator
               keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
               nestedScrollEnabled
             >
               <ReadingControls
@@ -787,7 +793,12 @@ function clampFont(n: number) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, paddingTop: 0, position: "relative" },
+  container: {
+    flex: 1,
+    padding: 16,
+    paddingTop: 0,
+    position: "relative",
+  },
   leftTouchable: {
     position: "absolute",
     top: "20%",
@@ -811,7 +822,6 @@ const styles = StyleSheet.create({
   chapterTitle: {
     marginTop: 16,
     fontWeight: "bold",
-    fontSize: 18,
     color: "#5b4636",
     marginBottom: 8,
   },

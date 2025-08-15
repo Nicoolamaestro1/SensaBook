@@ -64,7 +64,7 @@ export default function ReadingControls({
       <Text style={[styles.sliderHint, { color: c.subtext }]}>
         Tip: 180–250 wpm is comfy for most people.
       </Text>
-      <hr style={styles.horizontalLine} />
+      <View style={styles.horizontalLine} />
       {/* Font Size */}
       <Text style={[styles.sliderTitle, { color: c.text }]}>Font size</Text>
       <Text style={[styles.sliderValue, { color: c.accent }]}>
@@ -93,7 +93,7 @@ export default function ReadingControls({
       <Text style={[styles.sliderHint, { color: c.subtext }]}>
         Affects the size of book text.
       </Text>
-      <hr style={styles.horizontalLine} />
+      <View style={styles.horizontalLine} />
       {/* Ambience */}
       <Text style={[styles.sliderTitle, { color: c.text }]}>
         Ambience volume
@@ -119,7 +119,7 @@ export default function ReadingControls({
       <Text style={[styles.sliderHint, { color: c.subtext }]}>
         Controls the background ambience (loops).
       </Text>
-      <hr style={styles.horizontalLine} />
+      <View style={styles.horizontalLine} />
       {/* Triggers */}
       <Text style={[styles.sliderTitle, { color: c.text }]}>
         Trigger volume
@@ -145,7 +145,7 @@ export default function ReadingControls({
       <Text style={[styles.sliderHint, { color: c.subtext }]}>
         Controls one‑shot sound effects on trigger words.
       </Text>
-      <hr style={styles.horizontalLine} />
+      <View style={styles.horizontalLine} />
       {onBackToLibrary && (
         <TouchableOpacity
           onPress={onBackToLibrary}
@@ -192,13 +192,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     alignSelf: "center",
   },
-  primaryBtnText: { textAlign: "center", fontSize: 16, fontWeight: "600" },
+  primaryBtnText: {
+    textAlign: "center",
+    fontSize: 16,
+    fontFamily: "Montserrat_700Bold",
+  },
   horizontalLine: {
     width: "100%",
-    borderColor: "#eee",
-    borderWidth: 1,
-    borderTopWidth: 0,
+    height: 1,
+    backgroundColor: "#eee",
+    opacity: 0.7,
     marginTop: 15,
     marginBottom: 15,
+    alignSelf: "stretch",
   },
 });
