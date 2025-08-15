@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   AppState,
   Dimensions,
-  Platform,
 } from "react-native";
 import { ProgressBar } from "react-native-paper";
 import Animated, {
@@ -19,127 +18,52 @@ import Animated, {
 import SoundManager from "../utils/soundManager";
 import { useBook } from "../../hooks/useBooks";
 import { useWpm } from "../../hooks/useWpm";
-import { WORD_TRIGGERS, TriggerWord, SOUND_MAP } from "../../constants/sounds";
-import CrossPlatformSlider from "../components/CrossPlatformSlider";
+import {
+  WORD_TRIGGERS,
+  TriggerWord,
+  SOUND_MAP,
+  resolveSoundKey,
+} from "../../constants/sounds";
+import {
+  calculateWordTiming,
+  findTriggerWords,
+  fetchSoundscape,
+  tokenize,
+  snapToNearestToken,
+  paginateText,
+  computeReadingProgress,
+} from "../utils/reading";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
+import type { Book, Chapter, Page } from "../../types/book";
+import type { SoundscapeResponse } from "../../types/soundscape";
+import ReadingControls from "../components/ReadingControls";
+import { buildSoundscapeUrl, logSoundscapeRequest } from "../config/api";
 /* =====================================================
    THEME & CONSTANTS
    ===================================================== */
 
-const COLORS = {
+const COLORS = Object.freeze({
   card: "#17171c",
   text: "#EAEAF0",
   subtext: "#A6A8B1",
   border: "rgba(255,255,255,0.06)",
   accent: "#FF7A18",
-};
+});
 
-const STORAGE_KEYS = {
+const STORAGE_KEYS = Object.freeze({
   wpm: "settings.wpm",
   ambVol: "settings.ambienceVolPct",
   trigVol: "settings.triggerVolPct",
-};
+});
 
 const { height, width } = Dimensions.get("window");
-const API_HOST =
-  Platform.OS === "android" ? "http://10.0.2.2:8000" : "http://127.0.0.1:8000";
-const API_BASE = `${API_HOST}/soundscape`;
 
 /* =====================================================
    TYPES
    ===================================================== */
 
-type SoundscapeResponse = {
-  book_id: number;
-  book_page_id: number;
-  summary: string;
-  detected_scenes: string[];
-  scene_keyword_counts: Record<string, number>;
-  scene_keyword_positions: Record<string, number[]>;
-  carpet_tracks: string[];
-  triggered_sounds: Array<{ word: string; position: number; file: string }>; // NOTE: API sometimes uses different keys; we normalize later
-};
-
 type TimeoutId = ReturnType<typeof setTimeout>;
-
-/* =====================================================
-   HELPERS (pure)
-   ===================================================== */
-
-function norm(w: string) {
-  return w.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
-}
-
-function tokenize(text: string) {
-  return text.split(/\s+/).filter(Boolean);
-}
-
-function snapToNearestToken(
-  tokens: string[],
-  targetWord: string,
-  approxIdx: number,
-  window = 2
-) {
-  const target = norm(targetWord);
-  if (tokens[approxIdx] && norm(tokens[approxIdx]) === target) return approxIdx;
-  for (let d = 1; d <= window; d++) {
-    const L = approxIdx - d;
-    const R = approxIdx + d;
-    if (L >= 0 && norm(tokens[L] || "") === target) return L;
-    if (R < tokens.length && norm(tokens[R] || "") === target) return R;
-  }
-  return approxIdx;
-}
-
-function resolveSoundKey(soundFromApi?: string): string | undefined {
-  if (!soundFromApi) return undefined;
-  if ((SOUND_MAP as any)[soundFromApi]) return soundFromApi;
-
-  const parts = soundFromApi.split("/");
-  const baseRaw = parts.pop() || soundFromApi;
-  const folders = parts.length ? parts : [];
-  const baseNoExt = baseRaw.replace(/\.[^/.]+$/, "");
-  const exts = [".mp3", ".m4a", ".wav", ".ogg"];
-
-  const candidates: string[] = [];
-  for (const dir of [...folders, "ambience", "triggers", ""]) {
-    const p = dir ? `${dir}/` : "";
-    candidates.push(`${p}${baseRaw}`, `${p}${baseNoExt}`);
-    for (const e of exts) candidates.push(`${p}${baseNoExt}${e}`);
-  }
-  candidates.push(baseNoExt);
-  for (const e of exts) candidates.push(`${baseNoExt}${e}`);
-
-  for (const c of candidates) {
-    if ((SOUND_MAP as any)[c]) return c;
-  }
-
-  const keys = Object.keys(SOUND_MAP as any);
-  const fuzzy = keys.find(
-    (k) =>
-      k.endsWith(`/${baseNoExt}`) ||
-      k.endsWith(`${baseNoExt}`) ||
-      k.endsWith(`${baseNoExt}.mp3`) ||
-      k.includes(`/${baseNoExt}.`)
-  );
-  if (fuzzy) return fuzzy;
-
-  return undefined;
-}
-
-async function fetchSoundscape(
-  bookId: string | number,
-  chapterNumber: number,
-  pageNumber: number
-): Promise<SoundscapeResponse> {
-  const res = await fetch(
-    `${API_BASE}/book/${bookId}/chapter${chapterNumber}/page/${pageNumber}`
-  );
-  if (!res.ok) throw new Error(`soundscape ${res.status}`);
-  return res.json();
-}
 
 /* =====================================================
    COMPONENT
@@ -208,12 +132,14 @@ export default function BookDetailScreen() {
   /* ---------- Data: Book ---------- */
   const { bookId } = params;
   const { book, loading } = useBook(bookId as string) as {
-    book: any;
+    book: Book | null;
     loading: boolean;
   };
 
-  const currentChapter = book?.chapters?.[currentChapterIndex];
-  const currentPage = currentChapter?.pages?.[currentPageIndex];
+  const currentChapter: Chapter | undefined =
+    book?.chapters?.[currentChapterIndex];
+  const currentPage: Page | undefined =
+    currentChapter?.pages?.[currentPageIndex];
   const totalChapters = book?.chapters?.length || 0;
   const totalPages = currentChapter?.pages?.length || 0;
 
@@ -258,7 +184,9 @@ export default function BookDetailScreen() {
           setTriggerVolPct(n);
           SoundManager.setTriggerVolume(n / 100);
         }
-      } catch {}
+      } catch {
+        // swallow
+      }
     })();
   }, [setWpm]);
 
@@ -289,57 +217,6 @@ export default function BookDetailScreen() {
     if (params.page !== undefined) setCurrentPageIndex(Number(params.page));
     if (params.chunk !== undefined) setCurrentChunkIndex(Number(params.chunk));
   }, [params.chapter, params.page, params.chunk]);
-
-  /* =====================================================
-     TEXT PAGINATION & TIMING
-     ===================================================== */
-
-  const paginateText = React.useCallback(
-    (text: string, fontSize = 16, lineHeight = 24) => {
-      const words = text.split(/\s+/).filter(Boolean);
-      const usableHeight = height * 0.9;
-      const linesPerPage = Math.floor(usableHeight / lineHeight);
-      const avgCharsPerWord = 6;
-      const charsPerLine = Math.floor(width / (fontSize * 0.6));
-      const wordsPerLine = Math.floor(charsPerLine / avgCharsPerWord);
-      const wordsPerPage = linesPerPage * wordsPerLine;
-
-      const pages: string[] = [];
-      for (let i = 0; i < words.length; i += wordsPerPage) {
-        pages.push(words.slice(i, i + wordsPerPage).join(" "));
-      }
-      return pages;
-    },
-    []
-  );
-
-  const calculateWordTiming = React.useCallback((text: string) => {
-    if (!text) return { words: [], msPerWord: 333 };
-    const words = text.split(/\s+/).filter(Boolean);
-    const msPerWord = 60000 / (wpmRef.current || 200);
-    return { words, msPerWord };
-  }, []);
-
-  const findTriggerWords = React.useCallback(
-    (text: string) => {
-      const { words, msPerWord } = calculateWordTiming(text);
-      return words
-        .map((word, index) => {
-          const clean = word.toLowerCase().replace(/[^\w]/g, "");
-          if ((WORD_TRIGGERS as any)[clean]) {
-            return {
-              id: `${index}`,
-              word: clean,
-              position: index,
-              timing: index * msPerWord,
-            } as TriggerWord;
-          }
-          return null;
-        })
-        .filter(Boolean) as TriggerWord[];
-    },
-    [calculateWordTiming]
-  );
 
   /* =====================================================
      TIMERS / PLAYBACK CONTROL
@@ -374,35 +251,22 @@ export default function BookDetailScreen() {
         if (trig) {
           setActiveTriggerWords((prev) => new Set(prev).add(trig.id));
 
-          console.log(
-            `Trigger fired: word="${trig.word}", position=${
-              trig.position
-            }, soundKey="${trig.soundKey ?? "(none)"}"`
-          );
-
           const assetKey = trig.soundKey ?? trig.word;
-          console.log(`Resolved assetKey: "${assetKey}"`);
 
           if (
             typeof assetKey === "string" &&
             assetKey.startsWith("ambience/")
           ) {
-            console.log(
-              `Skipping ambience trigger for "${trig.word}" (assetKey: "${assetKey}")`
-            );
+            // skip ambience as trigger
             setActiveTriggerWords((prev) => {
               const s = new Set(prev);
               s.delete(trig.id);
               return s;
             });
           } else {
-            const asset =
-              (SOUND_MAP as any)[assetKey] ?? (WORD_TRIGGERS as any)[trig.word];
+            const asset = SOUND_MAP[assetKey] ?? WORD_TRIGGERS[trig.word];
 
             if (asset) {
-              console.log(
-                `✅ Playing sound for "${trig.word}" using key "${assetKey}"`
-              );
               SoundManager.playTrigger(asset).finally(() => {
                 setActiveTriggerWords((prev) => {
                   const s = new Set(prev);
@@ -411,9 +275,7 @@ export default function BookDetailScreen() {
                 });
               });
             } else {
-              console.warn(
-                `⚠️ No sound found for trigger: "${trig.word}" (assetKey: "${assetKey}")`
-              );
+              // no asset found; just clear highlight
               setActiveTriggerWords((prev) => {
                 const s = new Set(prev);
                 s.delete(trig.id);
@@ -437,6 +299,7 @@ export default function BookDetailScreen() {
     },
     [paginatedChunks, currentChunkIndex, stopReadingTimer]
   );
+
   const [lastCarpet, setLastCarpet] = React.useState<{
     key?: string;
     asset?: number;
@@ -545,48 +408,45 @@ export default function BookDetailScreen() {
       const pageNumber =
         book.chapters?.[ci]?.pages?.[pi]?.page_number ?? pi + 1;
 
-      const url = `${API_BASE}/book/${bookId}/chapter${chapterNumber}/page/${pageNumber}`;
-      console.log(`[API Request] Fetching soundscape: ${url}`);
+      // console.log remove after
+      logSoundscapeRequest(Number(bookId), chapterNumber, pageNumber);
 
       try {
-        const data = await fetchSoundscape(
-          bookId as string,
+        const data: SoundscapeResponse = await fetchSoundscape(
+          Number(bookId),
           chapterNumber,
           pageNumber
         );
-
         const chunkText = paginatedChunks[currentChunkIndex] || "";
         const chunkTokens = tokenize(chunkText);
         const wordsBeforeThisChunk = paginatedChunks
           .slice(0, currentChunkIndex)
           .reduce((sum, ch) => sum + tokenize(ch).length, 0);
 
-        const chunkTriggers: TriggerWord[] = (
-          (data as any).triggered_sounds || []
-        )
-          .map((t: any, i: number) => {
+        const chunkTriggers: TriggerWord[] = (data.triggered_sounds ?? [])
+          .map((t, i: number) => {
             const absolutePos = Number(
               (t as any).word_position ?? t.position ?? 0
             );
             const approxInChunk = absolutePos - wordsBeforeThisChunk;
             const snapped = snapToNearestToken(
               chunkTokens,
-              String(t.word || ""),
+              String((t as any).word || ""),
               approxInChunk,
               2
             );
 
-            const rawKey = resolveSoundKey((t as any).sound);
+            const rawKey = resolveSoundKey((t as any).sound ?? (t as any).file);
             const safeKey =
               rawKey && rawKey.startsWith("ambience/") ? undefined : rawKey;
 
             return {
               id: String(i),
-              word: String(t.word || "").toLowerCase(),
+              word: String((t as any).word || "").toLowerCase(),
               position: snapped,
               timing: 0,
               soundKey: safeKey,
-            } as any as TriggerWord;
+            } as TriggerWord;
           })
           .filter(
             (tw: TriggerWord) =>
@@ -597,10 +457,10 @@ export default function BookDetailScreen() {
         stopReadingTimer();
         startReadingTimer(0, chunkTriggers);
 
-        const first = (data as any).carpet_tracks?.[0];
+        const first = (data.carpet_tracks ?? [])[0];
         const resolved = resolveSoundKey(first);
-        if (resolved && (SOUND_MAP as any)[resolved]) {
-          const asset = (SOUND_MAP as any)[resolved];
+        if (resolved && SOUND_MAP[resolved]) {
+          const asset = SOUND_MAP[resolved];
           setLastCarpet({ key: resolved, asset }); // remember for retries
           await SoundManager.playCarpet(asset, resolved);
         }
@@ -611,7 +471,7 @@ export default function BookDetailScreen() {
 
       // fallback to local mapping if API fails
       const page = book?.chapters?.[ci]?.pages?.[pi];
-      let ambienceKey = page?.ambient as string;
+      let ambienceKey = page?.ambient as string | undefined;
       if (!ambienceKey) {
         const pageAmbienceMap: Record<string, string> = {
           "0-0": "ambience/windy_mountains.mp3",
@@ -621,7 +481,7 @@ export default function BookDetailScreen() {
         ambienceKey =
           pageAmbienceMap[`${ci}-${pi}`] || "ambience/default_ambience.mp3";
       }
-      const asset = (SOUND_MAP as any)[ambienceKey];
+      const asset = SOUND_MAP[ambienceKey];
       if (asset) {
         setLastCarpet({ key: ambienceKey, asset });
         await SoundManager.playCarpet(asset, ambienceKey);
@@ -653,11 +513,15 @@ export default function BookDetailScreen() {
   // paginate when page changes
   React.useEffect(() => {
     if (book && currentPage) {
-      const chunks = paginateText(currentPage.content);
+      const chunks = paginateText(
+        currentPage.content,
+        { width, height },
+        { fontSize: 16, lineHeight: 24 }
+      );
       setPaginatedChunks(chunks);
       setCurrentChunkIndex(0);
     }
-  }, [book, currentChapterIndex, currentPageIndex, currentPage, paginateText]);
+  }, [book, currentChapterIndex, currentPageIndex, currentPage]);
 
   // recompute triggers & start timers when chunk changes
   React.useEffect(() => {
@@ -667,7 +531,11 @@ export default function BookDetailScreen() {
       paginatedChunks.length > 0
     ) {
       const chunk = paginatedChunks[currentChunkIndex];
-      const triggers = findTriggerWords(chunk);
+      const { words, msPerWord } = calculateWordTiming(
+        chunk,
+        wpmRef.current || 200
+      );
+      const triggers = findTriggerWords(words, msPerWord);
       setTriggerWords(triggers);
       firedTriggerIdsRef.current = new Set();
       setActiveTriggerWords(new Set());
@@ -737,7 +605,7 @@ export default function BookDetailScreen() {
             : false;
           const isActiveReading = activeWordIndex === index;
 
-          let style: any = undefined;
+          let style: any | undefined = undefined;
           if (isActiveTrigger) style = styles.triggerHighlight;
           else if (isActiveReading) style = styles.wordBorderHighlight;
 
@@ -778,22 +646,11 @@ export default function BookDetailScreen() {
     );
   }
 
-  const totalPagesInBook =
-    book?.chapters?.reduce(
-      (total: number, chapter: any) => total + chapter.pages.length,
-      0
-    ) || 0;
-  const currentPageInBook =
-    (book?.chapters
-      ?.slice(0, currentChapterIndex)
-      .reduce(
-        (total: number, chapter: any) => total + chapter.pages.length,
-        0
-      ) || 0) +
-      currentPageIndex +
-      1 || 0;
-  const readingProgress =
-    totalPagesInBook > 0 ? currentPageInBook / totalPagesInBook : 0;
+  const {
+    totalPagesInBook,
+    currentPageInBook,
+    progress: readingProgress,
+  } = computeReadingProgress(book, currentChapterIndex, currentPageIndex);
 
   return (
     <>
@@ -859,95 +716,40 @@ export default function BookDetailScreen() {
             }}
             style={[styles.optionsPanel, { top: insets.top }, optionsAnim]}
           >
-            <Text style={styles.panelTitle}>Options</Text>
-
-            {/* WPM */}
-            <Text style={styles.sliderTitle}>Reading speed</Text>
-            <Text style={styles.sliderValue}>{wpm} wpm</Text>
-            <CrossPlatformSlider
-              minimumValue={50}
-              maximumValue={600}
-              step={10}
-              value={wpm}
-              onValueChange={(v: number) => {
+            <ReadingControls
+              wpm={wpm}
+              ambienceVolPct={ambienceVolPct}
+              triggerVolPct={triggerVolPct}
+              onWpmChange={(v) => {
                 setWpm(v);
-                save(STORAGE_KEYS.wpm, v);
+                AsyncStorage.setItem("settings.wpm", String(v)).catch(() => {});
               }}
-              minimumTrackTintColor={COLORS.accent}
-              maximumTrackTintColor="rgba(255,255,255,0.2)"
-              thumbTintColor={COLORS.accent}
-            />
-            <View style={styles.sliderScale}>
-              <Text style={styles.scaleText}>50</Text>
-              <Text style={styles.scaleText}>600</Text>
-            </View>
-            <Text style={styles.sliderHint}>
-              Tip: 180–250 wpm is comfy for most people.
-            </Text>
-
-            {/* Ambience Volume */}
-            <Text style={styles.sliderTitle}>Ambience volume</Text>
-            <Text style={styles.sliderValue}>{ambienceVolPct}%</Text>
-            <CrossPlatformSlider
-              minimumValue={0}
-              maximumValue={100}
-              step={1}
-              value={ambienceVolPct}
-              onValueChange={(v: number) => {
+              onAmbienceChange={(v) => {
                 setAmbienceVolPct(v);
                 SoundManager.setCarpetVolume(v / 100);
-                save(STORAGE_KEYS.ambVol, v);
+                AsyncStorage.setItem(
+                  "settings.ambienceVolPct",
+                  String(v)
+                ).catch(() => {});
               }}
-              minimumTrackTintColor={COLORS.accent}
-              maximumTrackTintColor="rgba(255,255,255,0.2)"
-              thumbTintColor={COLORS.accent}
-            />
-            <View style={styles.sliderScale}>
-              <Text style={styles.scaleText}>0</Text>
-              <Text style={styles.scaleText}>100</Text>
-            </View>
-            <Text style={styles.sliderHint}>
-              Controls the background ambience (loops).
-            </Text>
-
-            {/* Trigger Volume */}
-            <Text style={styles.sliderTitle}>Trigger volume</Text>
-            <Text style={styles.sliderValue}>{triggerVolPct}%</Text>
-            <CrossPlatformSlider
-              minimumValue={0}
-              maximumValue={100}
-              step={1}
-              value={triggerVolPct}
-              onValueChange={(v: number) => {
+              onTriggerChange={(v) => {
                 setTriggerVolPct(v);
                 SoundManager.setTriggerVolume(v / 100);
-                save(STORAGE_KEYS.trigVol, v);
+                AsyncStorage.setItem("settings.triggerVolPct", String(v)).catch(
+                  () => {}
+                );
               }}
-              minimumTrackTintColor={COLORS.accent}
-              maximumTrackTintColor="rgba(255,255,255,0.2)"
-              thumbTintColor={COLORS.accent}
-            />
-            <View style={styles.sliderScale}>
-              <Text style={styles.scaleText}>0</Text>
-              <Text style={styles.scaleText}>100</Text>
-            </View>
-            <Text style={styles.sliderHint}>
-              Controls one‑shot sound effects on trigger words.
-            </Text>
-
-            <TouchableOpacity
-              onPress={() => {
+              onBackToLibrary={() => {
                 setOptionsOpen(false);
                 router.replace("/library");
               }}
-              style={styles.primaryBtn}
-            >
-              <Text style={styles.primaryBtnText}>Back to Library</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={closeOptions}>
-              <Text style={styles.closeLink}>Close</Text>
-            </TouchableOpacity>
+              onClose={closeOptions}
+              colors={{
+                text: COLORS.text,
+                subtext: COLORS.subtext,
+                accent: COLORS.accent,
+              }}
+            />
           </Animated.View>
         )}
       </View>
@@ -956,7 +758,7 @@ export default function BookDetailScreen() {
 }
 
 /* =====================================================
-   STYLES (unchanged)
+   STYLES
    ===================================================== */
 
 const styles = StyleSheet.create({
@@ -995,10 +797,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#5b4636",
     lineHeight: 24,
-    textAlign: "justify",
-    flexWrap: "wrap",
-    flexDirection: "row",
-  } as any,
+    textAlign: "justify" as const,
+  },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
 
   triggerHighlight: {
