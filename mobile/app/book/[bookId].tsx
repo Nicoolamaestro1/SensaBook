@@ -10,6 +10,7 @@ import {
   Dimensions,
   ScrollView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { ProgressBar } from "react-native-paper";
 import Animated, {
   useSharedValue,
@@ -40,7 +41,9 @@ import type { Book, Chapter, Page } from "../../types/book";
 import type { SoundscapeResponse } from "../../types/soundscape";
 import ReadingControls from "../components/ReadingControls";
 import { buildSoundscapeUrl, logSoundscapeRequest } from "../config/api";
-
+import { GestureDetector, Gesture } from "react-native-gesture-handler";
+import { runOnJS } from 'react-native-reanimated';
+  
 /* =====================================================
    THEME & CONSTANTS
    ===================================================== */
@@ -655,8 +658,27 @@ export default function BookDetailScreen() {
     progress: readingProgress,
   } = computeReadingProgress(book, currentChapterIndex, currentPageIndex);
 
+  const swipe = Gesture.Pan().onEnd((event) => {
+    const { translationX, translationY } = event;
+
+    if (Math.abs(translationX) > Math.abs(translationY)) {
+      if (translationX > 0) {
+        runOnJS(goToPreviousPage)();
+      } else {
+        runOnJS(goToNextPage)();
+      }
+    } else {
+      if (translationY > 0) {
+        runOnJS(openOptions)();
+      } else {
+        runOnJS(closeOptions)();
+      }
+    }
+  });
+
   return (
-    <>
+    <GestureDetector gesture={swipe}>
+      <SafeAreaView style={{ flex: 1 }}>
       <View style={styles.progressContainer}>
         <ProgressBar
           progress={readingProgress}
@@ -666,11 +688,6 @@ export default function BookDetailScreen() {
       </View>
 
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <TouchableOpacity
-          style={styles.topTapZone}
-          onPress={openOptions}
-          activeOpacity={1}
-        />
         <TouchableOpacity
           style={styles.leftTouchable}
           onPress={goToPreviousPage}
@@ -699,14 +716,6 @@ export default function BookDetailScreen() {
         <Text style={styles.progressText}>
           {currentPageInBook} of {totalPagesInBook} pages
         </Text>
-
-        {optionsOpen && (
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={closeOptions}
-            style={styles.backdrop}
-          />
-        )}
 
         {(optionsOpen || hasShownPanel) && (
           <Animated.View
@@ -779,8 +788,9 @@ export default function BookDetailScreen() {
             </ScrollView>
           </Animated.View>
         )}
-      </View>
-    </>
+        </View>
+      </SafeAreaView>
+    </GestureDetector>
   );
 }
 
