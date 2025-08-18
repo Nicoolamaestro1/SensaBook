@@ -4,7 +4,8 @@ Config-driven, lightweight soundscape service that solves the Dracula problem
 """
 
 import yaml
-from typing import Dict, Optional
+import re
+from typing import Dict, Optional, List
 from sqlalchemy.orm import Session
 from pathlib import Path
 from .book import get_page, get_book
@@ -13,7 +14,6 @@ from .simple_scene_classifier import simple_scene_classifier, SceneAnalysis
 class SimpleSmartSoundscapeService:
     """
     Lightweight soundscape service that loads mappings from config files.
-    Solves the Dracula problem with simple, maintainable logic.
     """
     
     def __init__(self):
@@ -21,6 +21,7 @@ class SimpleSmartSoundscapeService:
         self.scene_audio_mapping = self._load_scene_audio_mapping()
         self.location_audio_mapping = self._load_location_audio_mapping()
         self.mood_audio_mapping = self._load_mood_audio_mapping()
+        self.trigger_words = self._load_trigger_words()
     
     def _load_scene_audio_mapping(self) -> Dict:
         """Load scene audio mappings from YAML config."""
@@ -43,6 +44,43 @@ class SimpleSmartSoundscapeService:
             config = yaml.safe_load(f)
         return config["mood_audio_mapping"]
     
+    def _load_trigger_words(self) -> Dict:
+        """Load trigger words from YAML config."""
+        config_file = self.config_dir / "audio_mappings.yaml"
+        with open(config_file, 'r') as f:
+            config = yaml.safe_load(f)
+        return config.get("trigger_words", {})
+    
+    def _detect_trigger_words(self, text: str) -> List[Dict]:
+        """Detect trigger words in text and return their positions and sound files."""
+        if not text or not self.trigger_words:
+            return []
+        
+        triggers = []
+        words = text.split()
+        
+        for i, word in enumerate(words):
+            clean_word = re.sub(r'[^\w\s]', '', word.lower())
+            
+            # Check if this word is a trigger word
+            if clean_word in self.trigger_words:
+                trigger_info = self.trigger_words[clean_word]
+                triggers.append({
+                    "word": clean_word,
+                    "position": i,
+                    "file": trigger_info.get("sound", f"{clean_word}.mp3")
+                })
+        
+        return triggers
+    
+    def _get_carpet_tracks(self, scene_analysis: SceneAnalysis) -> List[str]:
+        """Get carpet tracks (ambient background) based on scene analysis."""
+        primary_audio = self._get_primary_audio(scene_analysis)
+        secondary_audio = self._get_secondary_audio(scene_analysis, primary_audio)
+        
+        # Return both primary and secondary as carpet tracks
+        return [primary_audio, secondary_audio]
+    
     def generate_smart_soundscape(self, text: str, book_id: int = None, chapter_number: int = None, page_number: int = None, genre: str = None) -> Dict:
         """
         Generate intelligent soundscape based on scene classification.
@@ -60,7 +98,13 @@ class SimpleSmartSoundscapeService:
         # Step 3: Get secondary audio for variety
         secondary_audio = self._get_secondary_audio(scene_analysis, primary_audio)
         
-        # Step 4: Generate comprehensive soundscape
+        # Step 4: Detect trigger words
+        trigger_words = self._detect_trigger_words(text)
+        
+        # Step 5: Get carpet tracks
+        carpet_tracks = self._get_carpet_tracks(scene_analysis)
+        
+        # Step 6: Generate comprehensive soundscape
         soundscape = {
             "primary_audio": primary_audio,
             "secondary_audio": secondary_audio,
@@ -75,7 +119,10 @@ class SimpleSmartSoundscapeService:
             "genre_adjustments": scene_analysis.genre_adjustments,
             "book_id": book_id,
             "chapter_number": chapter_number,
-            "page_number": page_number
+            "page_number": page_number,
+            # Trigger words functionality
+            "triggered_sounds": trigger_words,
+            "carpet_tracks": carpet_tracks
         }
         
         return soundscape
