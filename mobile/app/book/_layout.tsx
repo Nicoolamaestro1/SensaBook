@@ -13,7 +13,12 @@ const CustomTheme = {
 export default function BookLayout() {
   return (
     <View
-      style={{ flex: 1, width: "100%", height: "100%", backgroundColor: "#f5ecd9" }} 
+      style={{
+        flex: 1,
+        width: "100%",
+        height: "100%",
+        backgroundColor: "#F7F3EA",
+      }}
     >
       <ThemeProvider value={CustomTheme}>
         <Stack screenOptions={{ headerShown: false }} />

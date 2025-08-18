@@ -1,3 +1,4 @@
+// CrossPlatformSlider.tsx
 import * as React from "react";
 import { Platform, View, StyleSheet } from "react-native";
 import NativeSlider, { SliderProps } from "@react-native-community/slider";
@@ -7,9 +8,9 @@ type Props = Omit<
   "onValueChange" | "onSlidingStart" | "onSlidingComplete"
 > & {
   value: number | null | undefined;
-  onValueChange?: (v: number) => void; // defensive: optional at runtime
-  onSlidingStart?: (v: number) => void;
-  onSlidingComplete?: (v: number) => void;
+  onValueChange?: (v: number) => void; // live preview while dragging
+  onSlidingStart?: (v: number) => void; // optional
+  onSlidingComplete?: (v: number) => void; // commit on release
 };
 
 export default function CrossPlatformSlider({
@@ -33,18 +34,20 @@ export default function CrossPlatformSlider({
   const stp = Number(step);
   const safeValue = Number.isFinite(Number(value)) ? Number(value) : min;
 
+  // keep the *latest* value for web pointerUp
+  const currentRef = React.useRef(safeValue);
+  currentRef.current = safeValue;
+
+  const clamp = (n: number) => Math.max(min, Math.min(max, n));
+
   const handleChange = React.useCallback(
     (n: number) => {
-      if (typeof onValueChange === "function") onValueChange(n);
-      else if (__DEV__) {
-        const name =
-          (rest as any)?.accessibilityLabel ||
-          (rest as any)?.testID ||
-          "CrossPlatformSlider";
-        console.warn(`[${name}] onValueChange missing; value=${n}`);
-      }
+      if (!Number.isFinite(n)) return;
+      const clamped = clamp(n);
+      currentRef.current = clamped; // keep in sync for web
+      if (typeof onValueChange === "function") onValueChange(clamped);
     },
-    [onValueChange, rest]
+    [onValueChange]
   );
 
   if (Platform.OS !== "web") {
@@ -53,8 +56,9 @@ export default function CrossPlatformSlider({
         style={style}
         value={safeValue}
         onValueChange={handleChange}
-        onSlidingStart={() => onSlidingStart?.(safeValue)}
-        onSlidingComplete={() => onSlidingComplete?.(safeValue)}
+        // ⬇️ pass the live/native value, not safeValue
+        onSlidingStart={(n) => onSlidingStart?.(clamp(Number(n)))}
+        onSlidingComplete={(n) => onSlidingComplete?.(clamp(Number(n)))}
         minimumValue={min}
         maximumValue={max}
         step={stp}
@@ -68,10 +72,9 @@ export default function CrossPlatformSlider({
     );
   }
 
-  // Web: DOM range input with proper CSSProperties (don’t pass RN styles)
+  // Web: DOM range input
   const webInputStyle: React.CSSProperties = {
     width: "100%",
-    // Modern browsers: accentColor maps to active track + thumb
     accentColor: minimumTrackTintColor as unknown as string,
   };
 
@@ -84,9 +87,13 @@ export default function CrossPlatformSlider({
         step={stp}
         value={safeValue}
         disabled={!!disabled}
+        // keep ref updated + provide live preview
         onChange={(e) => handleChange(Number(e.currentTarget.value))}
-        onPointerDown={() => onSlidingStart?.(safeValue)}
-        onPointerUp={() => onSlidingComplete?.(safeValue)}
+        onPointerDown={() => onSlidingStart?.(currentRef.current)}
+        // ⬇️ commit the latest value on release
+        onPointerUp={(e) =>
+          onSlidingComplete?.(clamp(Number(e.currentTarget.value)))
+        }
         aria-label={accessibilityLabel}
         aria-valuemin={min}
         aria-valuemax={max}
@@ -98,5 +105,9 @@ export default function CrossPlatformSlider({
 }
 
 const styles = StyleSheet.create({
-  webContainer: { width: "100%", height: 40, justifyContent: "center" },
+  webContainer: {
+    width: "100%",
+    height: 40,
+    justifyContent: "center",
+  },
 });

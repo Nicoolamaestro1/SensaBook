@@ -1,7 +1,12 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Pressable,
+} from "react-native";
 import CrossPlatformSlider from "./CrossPlatformSlider";
-
 const DEFAULT_COLORS = {
   text: "#EAEAF0",
   subtext: "#A6A8B1",
@@ -12,16 +17,25 @@ type Props = {
   wpm: number;
   ambienceVolPct: number;
   triggerVolPct: number;
-  fontSize: number; // ← required now
+  fontSize: number;
   onWpmChange: (v: number) => void;
   onAmbienceChange: (v: number) => void;
   onTriggerChange: (v: number) => void;
-  onFontSizeChange: (v: number) => void; // ← required now
+  onFontSizeChange: (v: number) => void;
   onBackToLibrary?: () => void;
+  onAnySliderStart?: () => void;
+  onAnySliderEnd?: () => void;
   onClose?: () => void;
   hideClose?: boolean;
   colors?: Partial<typeof DEFAULT_COLORS>;
 };
+
+const WPM_MIN = 50;
+const WPM_MAX = 600;
+const FONT_MIN = 12;
+const FONT_MAX = 28;
+const VOL_MIN = 0;
+const VOL_MAX = 100;
 
 export default function ReadingControls({
   wpm,
@@ -35,48 +49,83 @@ export default function ReadingControls({
   onBackToLibrary,
   onClose,
   hideClose = false,
+  onAnySliderStart,
+  onAnySliderEnd,
   colors = {},
 }: Props) {
   const c = { ...DEFAULT_COLORS, ...colors };
 
+  // local preview state while sliding
+  const [wpmLocal, setWpmLocal] = React.useState(wpm);
+  const [fontLocal, setFontLocal] = React.useState(fontSize);
+  const [ambLocal, setAmbLocal] = React.useState(ambienceVolPct);
+  const [trigLocal, setTrigLocal] = React.useState(triggerVolPct);
+
+  // keep locals in sync if parent updates from elsewhere
+  React.useEffect(() => setWpmLocal(wpm), [wpm]);
+  React.useEffect(() => setFontLocal(fontSize), [fontSize]);
+  React.useEffect(() => setAmbLocal(ambienceVolPct), [ambienceVolPct]);
+  React.useEffect(() => setTrigLocal(triggerVolPct), [triggerVolPct]);
+
+  const clamp = (n: number, lo: number, hi: number) =>
+    Math.max(lo, Math.min(hi, n));
+
   return (
-    <View>
+    <View style={{ width: "100%" }}>
       <Text style={[styles.panelTitle, { color: c.text }]}>Options</Text>
 
       {/* WPM */}
       <Text style={[styles.sliderTitle, { color: c.text }]}>Reading speed</Text>
-      <Text style={[styles.sliderValue, { color: c.accent }]}>{wpm} wpm</Text>
+      <Text style={[styles.sliderValue, { color: c.accent }]}>
+        {wpmLocal} wpm
+      </Text>
       <CrossPlatformSlider
         testID="slider:wpm"
-        minimumValue={50}
-        maximumValue={600}
+        minimumValue={WPM_MIN}
+        maximumValue={WPM_MAX}
         step={10}
-        value={wpm}
-        onValueChange={onWpmChange}
+        value={wpmLocal}
+        onSlidingStart={() => onAnySliderStart?.()}
+        onValueChange={(v) =>
+          setWpmLocal(clamp(Math.round(v), WPM_MIN, WPM_MAX))
+        }
+        onSlidingComplete={(v) => {
+          onWpmChange(clamp(Math.round(v), WPM_MIN, WPM_MAX));
+          onAnySliderEnd?.(); // ⬅️ end
+        }}
         minimumTrackTintColor={c.accent}
         maximumTrackTintColor="rgba(255,255,255,0.2)"
         thumbTintColor={c.accent}
       />
       <View style={styles.sliderScale}>
-        <Text style={[styles.scaleText, { color: c.subtext }]}>50</Text>
-        <Text style={[styles.scaleText, { color: c.subtext }]}>600</Text>
+        <Text style={[styles.scaleText, { color: c.subtext }]}>{WPM_MIN}</Text>
+        <Text style={[styles.scaleText, { color: c.subtext }]}>{WPM_MAX}</Text>
       </View>
       <Text style={[styles.sliderHint, { color: c.subtext }]}>
         Tip: 180–250 wpm is comfy for most people.
       </Text>
+
       <View style={styles.horizontalLine} />
+
       {/* Font Size */}
       <Text style={[styles.sliderTitle, { color: c.text }]}>Font size</Text>
       <Text style={[styles.sliderValue, { color: c.accent }]}>
-        {fontSize} pt
+        {fontLocal} pt
       </Text>
       <CrossPlatformSlider
         testID="slider:fontSize"
-        value={Number.isFinite(fontSize as number) ? fontSize : 16}
-        onValueChange={onFontSizeChange}
-        minimumValue={12}
-        maximumValue={28}
+        value={fontLocal}
+        minimumValue={FONT_MIN}
+        maximumValue={FONT_MAX}
         step={1}
+        onSlidingStart={() => onAnySliderStart?.()}
+        onValueChange={(v) =>
+          setFontLocal(clamp(Math.round(v), FONT_MIN, FONT_MAX))
+        }
+        onSlidingComplete={(v) => {
+          onFontSizeChange(clamp(Math.round(v), FONT_MIN, FONT_MAX));
+          onAnySliderEnd?.();
+        }}
         minimumTrackTintColor={c.accent}
         maximumTrackTintColor="rgba(255,255,255,0.2)"
         thumbTintColor={c.accent}
@@ -93,59 +142,77 @@ export default function ReadingControls({
       <Text style={[styles.sliderHint, { color: c.subtext }]}>
         Affects the size of book text.
       </Text>
+
       <View style={styles.horizontalLine} />
+
       {/* Ambience */}
       <Text style={[styles.sliderTitle, { color: c.text }]}>
         Ambience volume
       </Text>
-      <Text style={[styles.sliderValue, { color: c.accent }]}>
-        {ambienceVolPct}%
-      </Text>
+      <Text style={[styles.sliderValue, { color: c.accent }]}>{ambLocal}%</Text>
       <CrossPlatformSlider
         testID="slider:ambience"
-        minimumValue={0}
-        maximumValue={100}
+        minimumValue={VOL_MIN}
+        maximumValue={VOL_MAX}
         step={1}
-        value={ambienceVolPct}
-        onValueChange={onAmbienceChange}
+        value={ambLocal}
+        onSlidingStart={() => onAnySliderStart?.()}
+        onValueChange={(v) =>
+          setAmbLocal(clamp(Math.round(v), VOL_MIN, VOL_MAX))
+        }
+        onSlidingComplete={(v) => {
+          onAmbienceChange(clamp(Math.round(v), VOL_MIN, VOL_MAX));
+          onAnySliderEnd?.();
+        }}
         minimumTrackTintColor={c.accent}
         maximumTrackTintColor="rgba(255,255,255,0.2)"
         thumbTintColor={c.accent}
       />
       <View style={styles.sliderScale}>
-        <Text style={[styles.scaleText, { color: c.subtext }]}>0</Text>
-        <Text style={[styles.scaleText, { color: c.subtext }]}>100</Text>
+        <Text style={[styles.scaleText, { color: c.subtext }]}>{VOL_MIN}</Text>
+        <Text style={[styles.scaleText, { color: c.subtext }]}>{VOL_MAX}</Text>
       </View>
       <Text style={[styles.sliderHint, { color: c.subtext }]}>
         Controls the background ambience (loops).
       </Text>
+
       <View style={styles.horizontalLine} />
+
       {/* Triggers */}
       <Text style={[styles.sliderTitle, { color: c.text }]}>
         Trigger volume
       </Text>
       <Text style={[styles.sliderValue, { color: c.accent }]}>
-        {triggerVolPct}%
+        {trigLocal}%
       </Text>
       <CrossPlatformSlider
         testID="slider:trigger"
-        minimumValue={0}
-        maximumValue={100}
+        minimumValue={VOL_MIN}
+        maximumValue={VOL_MAX}
         step={1}
-        value={triggerVolPct}
-        onValueChange={onTriggerChange}
+        value={trigLocal}
+        onSlidingStart={() => onAnySliderStart?.()}
+        onValueChange={(v) =>
+          setTrigLocal(clamp(Math.round(v), VOL_MIN, VOL_MAX))
+        }
+        onSlidingComplete={(v) => {
+          onTriggerChange(clamp(Math.round(v), VOL_MIN, VOL_MAX));
+          onAnySliderEnd?.();
+        }}
         minimumTrackTintColor={c.accent}
         maximumTrackTintColor="rgba(255,255,255,0.2)"
         thumbTintColor={c.accent}
       />
       <View style={styles.sliderScale}>
-        <Text style={[styles.scaleText, { color: c.subtext }]}>0</Text>
-        <Text style={[styles.scaleText, { color: c.subtext }]}>100</Text>
+        <Text style={[styles.scaleText, { color: c.subtext }]}>{VOL_MIN}</Text>
+        <Text style={[styles.scaleText, { color: c.subtext }]}>{VOL_MAX}</Text>
       </View>
       <Text style={[styles.sliderHint, { color: c.subtext }]}>
-        Controls one‑shot sound effects on trigger words.
+        Controls one-shot sound effects on trigger words.
       </Text>
+
       <View style={styles.horizontalLine} />
+
       {onBackToLibrary && (
         <TouchableOpacity
           onPress={onBackToLibrary}
@@ -157,14 +224,30 @@ export default function ReadingControls({
         </TouchableOpacity>
       )}
 
+      {/* Close */}
       {!hideClose && onClose && (
-        <TouchableOpacity onPress={onClose} style={{ marginTop: 8 }}>
+        <Pressable
+          onPress={onClose}
+          hitSlop={{ top: 12, bottom: 12, left: 16, right: 16 }}
+          style={({ pressed }) => [
+            {
+              alignSelf: "center",
+              marginTop: 8,
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+              borderRadius: 20,
+              opacity: pressed ? 0.6 : 1,
+            },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Close options"
+        >
           <Text
             style={{ color: c.accent, fontWeight: "600", textAlign: "center" }}
           >
             Close
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       )}
     </View>
   );

@@ -56,7 +56,10 @@ export default function WelcomeScreen() {
   return (
     <ScreenBackground>
       <View style={styles.container}>
-        <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.logoHolder}>
             {/* Logo */}
             <Animated.Image
@@ -92,7 +95,11 @@ export default function WelcomeScreen() {
                 </Animated.Text>
               ))}
             </View>
-            <Text style={styles.title}>Reading You Can Feel!</Text>
+            <Text style={styles.title}>
+              Reading You
+              {"\n"}
+              Can Feel!
+            </Text>
           </View>
 
           <View style={styles.buttonGroup}>
@@ -107,7 +114,9 @@ export default function WelcomeScreen() {
                 source={require("../../assets/images/google.png")}
                 style={styles.icon}
               />
-              <Text style={styles.secondaryButtonText}>Continue with Google</Text>
+              <Text style={styles.secondaryButtonText}>
+                Continue with Google
+              </Text>
             </TouchableOpacity>
 
             {/* Button - Apple */}
@@ -116,7 +125,9 @@ export default function WelcomeScreen() {
                 source={require("../../assets/images/apple.png")}
                 style={styles.icon}
               />
-              <Text style={styles.secondaryButtonText}>Continue with Apple</Text>
+              <Text style={styles.secondaryButtonText}>
+                Continue with Apple
+              </Text>
             </TouchableOpacity>
 
             {/* Button - Login */}
@@ -137,13 +148,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "space-between",
-    alignItems: "center",
     paddingHorizontal: 24,
     fontFamily: "Montserrat_400Regular",
     paddingTop: 40,
     paddingBottom: 40,
     minHeight: "100%",
     overflow: "scroll",
+    width: "100%",
+    alignItems: "stretch",
   },
 
   logoHolder: {
@@ -166,13 +178,13 @@ const styles = StyleSheet.create({
     height: 20,
     position: "absolute",
     left: 15,
-    top: 18, // numeric, tweak to visually center
-    transform: [{ translateY: -10 }], // RN transform (half of icon height)
+    top: 23,
+    transform: [{ translateY: -10 }],
     resizeMode: "contain",
   },
   title: {
     fontFamily: "Montserrat_700Bold",
-    fontSize: width * 0.11,
+    fontSize: width * 0.09,
     textAlign: "center",
     marginBottom: 60,
     color: "#fff",
@@ -180,6 +192,7 @@ const styles = StyleSheet.create({
   buttonGroup: {
     width: "100%",
     marginBottom: 40,
+    alignSelf: "stretch",
   },
   primaryButton: {
     backgroundColor: "#fff",
@@ -188,6 +201,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     marginBottom: 10,
     width: "100%",
+    alignSelf: "stretch",
   },
   primaryButtonText: {
     color: "#000",
@@ -203,6 +217,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     marginBottom: 10,
     width: "100%",
+    alignSelf: "stretch",
   },
   secondaryButtonText: {
     color: "#fff",

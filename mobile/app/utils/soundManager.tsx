@@ -11,9 +11,12 @@ class SoundManager {
   private static activeSounds: Set<Audio.Sound> = new Set();
   private static isCarpetLoading = false;
 
-  /** Increments whenever we start/stop/cancel. Any async work should
-   *  check this value and bail if it changes. */
+  /** Global swap token (ambience + global aborts). */
   private static swapToken = 0;
+
+  /** Trigger-only token: bump this to abort/retire trigger fades & playback. */
+  private static triggerSwapToken = 0;
+
   private static audioModeReady = false;
 
   // --- Helpers ---
@@ -37,7 +40,7 @@ class SoundManager {
     }
   }
 
-  /** Set trigger one‑shots volume, 0..1. Will be used for future triggers. */
+  /** Set trigger one-shots volume, 0..1. Will be used for future triggers. */
   static setTriggerVolume(v: number) {
     this.triggerVolume = Math.max(0, Math.min(1, v));
   }
@@ -46,15 +49,12 @@ class SoundManager {
     if (this.audioModeReady) return;
 
     try {
-      // Build options per platform; don't send iOS keys on web/Android, etc.
       const opts: any = {
         staysActiveInBackground: false,
       };
 
       if (Platform.OS === "ios") {
         opts.playsInSilentModeIOS = true;
-
-        // Prefer new enums if present (SDK 50+), fall back to legacy constants
         const iEnum = (Audio as any).InterruptionModeIOS;
         opts.interruptionModeIOS =
           iEnum?.MixWithOthers ??
@@ -62,21 +62,18 @@ class SoundManager {
       } else if (Platform.OS === "android") {
         opts.shouldDuckAndroid = false;
         opts.playThroughEarpieceAndroid = false;
-
         const aEnum = (Audio as any).InterruptionModeAndroid;
         opts.interruptionModeAndroid =
           aEnum?.DoNotMix ??
           (Audio as any).INTERRUPTION_MODE_ANDROID_DO_NOT_MIX;
       } else {
-        // web: set nothing extra; web shim doesn't accept the native enums
+        // web: set nothing extra
       }
 
       await Audio.setAudioModeAsync(opts);
     } catch (e) {
-      // If the platform rejects unknown keys, swallow and move on
       console.warn("[SoundManager] setAudioMode failed (non-fatal):", e);
     } finally {
-      // Don't retry every call; treat audio mode as best-effort
       this.audioModeReady = true;
     }
   }
@@ -96,7 +93,6 @@ class SoundManager {
     newTargetVol: number,
     myToken: number
   ) {
-    // Capture starting volumes once
     let oldStartVol = 0;
     if (oldSound) {
       try {
@@ -111,7 +107,6 @@ class SoundManager {
       if (s2.isLoaded && typeof s2.volume === "number") newStartVol = s2.volume;
     } catch {}
 
-    // Monotonic volumes we actually apply (never increase old, never decrease new)
     let lastOld = oldStartVol;
     let lastNew = newStartVol;
 
@@ -119,16 +114,14 @@ class SoundManager {
     let t = 0;
 
     while (t < 1) {
-      // Abort if someone called stopCarpet/stopAll or another swap started
-      if (myToken !== this.swapToken) return;
+      if (myToken !== this.swapToken) return; // aborted globally
 
       const elapsed = this.now() - start;
       t = Math.min(1, elapsed / durationMs);
 
-      const targetIn = this.equalPowerIn(t) * newTargetVol; // 0 → target
-      const targetOut = this.equalPowerOut(t) * oldStartVol; // oldStart → 0
+      const targetIn = this.equalPowerIn(t) * newTargetVol;
+      const targetOut = this.equalPowerOut(t) * oldStartVol;
 
-      // Never-up clamps
       const nextNew = Math.max(lastNew, targetIn);
       const nextOld = Math.min(lastOld, targetOut);
 
@@ -144,26 +137,67 @@ class SoundManager {
       lastNew = nextNew;
       lastOld = nextOld;
 
-      await this.sleep(16); // ~60fps
+      await this.sleep(16);
     }
   }
 
-  /** Quick fade-in for one-shots (never-down clamp). */
+  /** Abortable equal-power fade-in (never-down clamp). */
   private static async fadeIn(
     sound: Audio.Sound,
     duration = 300,
-    targetVolume = 0.8
+    targetVolume = 0.8,
+    globalToken?: number,
+    triggerToken?: number
   ) {
     const s0 = await sound.getStatusAsync().catch(() => null as any);
     let last =
       s0 && s0.isLoaded && typeof s0.volume === "number" ? s0.volume : 0;
+
     const start = this.now();
     let t = 0;
+
     while (t < 1) {
+      // abort if either token changed
+      if (
+        (globalToken != null && globalToken !== this.swapToken) ||
+        (triggerToken != null && triggerToken !== this.triggerSwapToken)
+      ) {
+        break;
+      }
+
       const elapsed = this.now() - start;
       t = Math.min(1, elapsed / duration);
       const target = this.equalPowerIn(t) * targetVolume;
       const next = Math.max(last, target);
+      try {
+        await sound.setVolumeAsync(next);
+      } catch {}
+      last = next;
+      await this.sleep(16);
+    }
+  }
+
+  /** Equal-power fade-out to 0 (never-up clamp). */
+  private static async fadeOut(
+    sound: Audio.Sound,
+    duration = 250
+  ): Promise<void> {
+    let s0: any = null;
+    try {
+      s0 = await sound.getStatusAsync();
+    } catch {}
+    const startVol =
+      s0 && s0.isLoaded && typeof s0.volume === "number" ? s0.volume : 0;
+
+    let last = startVol;
+    const start = this.now();
+    let t = 0;
+
+    while (t < 1) {
+      const elapsed = this.now() - start;
+      t = Math.min(1, elapsed / Math.max(1, duration));
+      const target = this.equalPowerOut(t) * startVol; // startVol -> 0
+      const next = Math.min(last, target); // never-up
       try {
         await sound.setVolumeAsync(next);
       } catch {}
@@ -186,16 +220,13 @@ class SoundManager {
     else if (typeof keyOrFade === "number") fadeMs = keyOrFade;
 
     console.log(`🎵 Ambient carpet requested: "${key}"`);
-    // Skip if same ambience already playing
     if (key && this.currentCarpetKey === key && this.carpetSound) return;
     if (!key && this.carpetAssetId === asset && this.carpetSound) return;
 
-    // Prevent concurrent loads
     if (this.isCarpetLoading) return;
     const myToken = ++this.swapToken;
     this.isCarpetLoading = true;
 
-    // Create the next sound fully muted and paused
     let next: Audio.Sound | null = null;
     try {
       const created = await Audio.Sound.createAsync(asset, {
@@ -205,7 +236,7 @@ class SoundManager {
       });
       next = created.sound;
       await next.setVolumeAsync(0.0);
-      await this.sleep(10); // ensure native applies volume 0
+      await this.sleep(10);
       if (myToken !== this.swapToken) {
         await next.unloadAsync().catch(() => {});
         this.isCarpetLoading = false;
@@ -224,7 +255,6 @@ class SoundManager {
       return;
     }
 
-    // Crossfade with "never-up" clamps and abort checks
     await this.crossFade(
       this.carpetSound,
       next,
@@ -233,7 +263,6 @@ class SoundManager {
       myToken
     ).catch(() => {});
 
-    // After fade completes (and not aborted), unload old
     if (myToken === this.swapToken && this.carpetSound) {
       try {
         await this.carpetSound.stopAsync();
@@ -243,13 +272,11 @@ class SoundManager {
       } catch {}
     }
 
-    // Commit new state if still current
     if (myToken === this.swapToken) {
       this.carpetSound = next;
       this.carpetAssetId = asset;
       if (key) this.currentCarpetKey = key;
     } else {
-      // We were aborted: unload the "next" we created
       await next.unloadAsync().catch(() => {});
     }
 
@@ -267,21 +294,22 @@ class SoundManager {
 
     if (!old) return;
 
-    // Fade out from whatever volume it has now; monotonic down
+    // Fade out from current volume
     let s0: any = null;
     try {
       s0 = await old.getStatusAsync();
     } catch {}
-    let last =
+    const startVol =
       s0 && s0.isLoaded && typeof s0.volume === "number" ? s0.volume : 0;
 
+    let last = startVol;
     const start = this.now();
     let t = 0;
     while (t < 1) {
       if (myToken !== this.swapToken) break; // another stop started
       const elapsed = this.now() - start;
       t = Math.min(1, elapsed / Math.max(1, fadeMs));
-      const target = this.equalPowerOut(t) * last; // startVol -> 0
+      const target = this.equalPowerOut(t) * startVol; // startVol -> 0
       const next = Math.min(last, target); // never-up
       try {
         await old.setVolumeAsync(next);
@@ -298,9 +326,37 @@ class SoundManager {
     } catch {}
   }
 
+  /** Fade out ONLY one-shot trigger sounds (used on screen blur/unmount). */
+  static async stopTriggers(fadeMs = 250) {
+    // Signal new generation for triggers so any in-flight trigger fade-ins stop rising
+    this.triggerSwapToken++;
+
+    const sounds = [...this.activeSounds];
+    await Promise.all(
+      sounds.map(async (s) => {
+        try {
+          // detach status updates to avoid double-calls during manual stop
+          try {
+            s.setOnPlaybackStatusUpdate(null);
+          } catch {}
+          await this.fadeOut(s, fadeMs);
+          try {
+            await s.stopAsync();
+          } catch {}
+          try {
+            await s.unloadAsync();
+          } catch {}
+        } finally {
+          this.activeSounds.delete(s);
+        }
+      })
+    );
+  }
+
   /** Hard stop everything (ambience + one-shots). Aborts all fades. */
   static async stopAll() {
-    const myToken = ++this.swapToken; // abort everything
+    const myToken = ++this.swapToken; // abort everything (global)
+    this.triggerSwapToken++; // also abort any trigger fades
     this.isCarpetLoading = false;
 
     // Stop ambience immediately
@@ -318,37 +374,58 @@ class SoundManager {
       } catch {}
     }
 
-    // Stop any one-shots
-    for (const s of [...this.activeSounds]) {
-      try {
-        await s.stopAsync();
-      } catch {}
-      try {
-        await s.unloadAsync();
-      } catch {}
-      this.activeSounds.delete(s);
-    }
+    // Fade out triggers quickly for a cleaner stop
+    await this.stopTriggers(150);
   }
 
   /** Play a one-shot trigger. */
   static async playTrigger(asset: number): Promise<void> {
     await this.ensureAudioMode();
 
+    const globalToken = this.swapToken;
+    const triggerToken = this.triggerSwapToken;
+
     let sound: Audio.Sound | null = null;
     try {
+      // Start muted, then play and fade-in (abortable by tokens)
       const created = await Audio.Sound.createAsync(asset, {
-        shouldPlay: true,
+        shouldPlay: false,
         isLooping: false,
         volume: 0.0,
       });
       sound = created.sound;
       this.activeSounds.add(sound);
 
-      await this.fadeIn(sound, 250, this.triggerVolume);
+      try {
+        await sound.setVolumeAsync(0.0);
+      } catch {}
+      await this.sleep(10);
+      try {
+        await sound.playAsync();
+      } catch {}
+
+      await this.fadeIn(
+        sound,
+        250,
+        this.triggerVolume,
+        globalToken,
+        triggerToken
+      );
 
       return new Promise<void>((resolve) => {
         sound!.setOnPlaybackStatusUpdate((status: any) => {
           if (!status || !status.isLoaded) return;
+
+          // If trigger generation changed (e.g., stopTriggers called), we bail here.
+          if (triggerToken !== this.triggerSwapToken) {
+            try {
+              sound!.setOnPlaybackStatusUpdate(null);
+            } catch {}
+            // stopTriggers() will do the fade & unload; we just resolve.
+            resolve();
+            return;
+          }
+
           if (
             status.didJustFinish ||
             (!status.isPlaying && status.positionMillis > 0)

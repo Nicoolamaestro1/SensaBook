@@ -96,6 +96,8 @@ export default function Index() {
                     fontSize: 24,
                     color: "#fff",
                     fontFamily: "Montserrat_700Bold",
+                    textAlign: "center",
+                    marginBottom: 70,
                     opacity: letterAnimations[i].opacity,
 
                     transform: [{ translateY: letterAnimations[i].translateY }],
