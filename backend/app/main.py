@@ -1,27 +1,43 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from .api.router import api_router
+from .core.config import settings
 
-from app.api import router as api_router 
-# from app.api.router import router as api_router
-from app.db.session import engine, Base
-from app.models.book import Book  # Import your models
-from app.models.user import User  # Import User model
+app = FastAPI(
+    title="SensaBook API",
+    description="Intelligent reading analytics and soundscape generation",
+    version="2.0.0"
+)
 
-
-app = FastAPI()
-
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow multiple ports
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(api_router)
- 
-# Create all database tables
-Base.metadata.create_all(bind=engine)
+# Include the new simplified API router
+app.include_router(api_router, prefix="/api")
+
+@app.get("/")
+async def root():
+    return {
+        "message": "SensaBook API - Intelligent Soundscape Generation",
+        "version": "2.0.0",
+        "status": "active",
+        "features": [
+            "Scene-aware soundscape generation",
+            "Genre-aware adjustments",
+            "Config-driven patterns",
+            "Dracula problem solved"
+        ]
+    }
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "system": "SensaBook"}
 
 
 

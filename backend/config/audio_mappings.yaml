@@ -1,0 +1,53 @@
+# Audio Mappings Configuration
+# This replaces hardcoded audio mappings in smart_soundscape.py
+
+scene_audio_mapping:
+  dialogue:
+    primary: "conversation_ambient"
+    alternatives: ["soft_background", "gentle_atmosphere"]
+    description: "Conversation and dialogue scenes"
+  
+  action:
+    primary: "action_rhythms"
+    alternatives: ["intense_background", "dynamic_movement"]
+    description: "Action and movement scenes"
+  
+  descriptive:
+    primary: "atmospheric_background"
+    alternatives: ["gentle_ambience", "soft_atmosphere"]
+    description: "Descriptive and atmospheric scenes"
+  
+  emotional:
+    primary: "emotional_ambient"
+    alternatives: ["intense_atmosphere", "deep_background"]
+    description: "Emotional and intense scenes"
+  
+  transition:
+    primary: "transition_ambient"
+    alternatives: ["soft_change", "gentle_shift"]
+    description: "Scene transitions and changes"
+  
+  neutral:
+    primary: "default_ambient"
+    alternatives: ["gentle_background", "soft_atmosphere"]
+    description: "Neutral or unclear scenes"
+
+location_audio_mapping:
+  hotel: "hotel_dining_ambient"
+  dining: "hotel_dining_ambient"
+  restaurant: "restaurant_ambient"
+  castle: "castle_atmosphere"
+  forest: "forest_nature"
+  mountain: "mountain_wind"
+  city: "urban_background"
+  town: "small_town_ambient"
+  cave: "cave_echoes"
+  storm: "storm_weather"
+  rain: "rain_ambient"
+
+mood_audio_mapping:
+  tense: "tense_atmosphere"
+  peaceful: "peaceful_ambient"
+  exciting: "exciting_background"
+  dark: "dark_atmosphere"
+  warm: "warm_ambient"

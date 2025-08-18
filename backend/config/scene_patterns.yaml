@@ -1,0 +1,112 @@
+# Scene Classification Patterns Configuration
+# This replaces hardcoded patterns in scene_classifier.py
+
+scene_types:
+  dialogue:
+    base_weight: 5.0
+    audio_base: "conversation_ambient"
+    patterns:
+      - '["""].*?["""]'  # Quoted dialogue
+      - '\b(said|asked|replied|answered|spoke|told|explained)\b'
+      - '\b(conversation|discussion|talk|chat|debate)\b'
+      - '\b(he said|she said|they said|I said)\b'
+  
+  action:
+    base_weight: 4.0
+    audio_base: "action_rhythms"
+    patterns:
+      - '\b(ran|jumped|fought|moved|climbed|escaped|chased)\b'
+      - '\b(sword|battle|combat|fight|attack|defend)\b'
+      - '\b(quickly|suddenly|immediately|rapidly)\b'
+      - '\b(movement|motion|activity|action)\b'
+  
+  descriptive:
+    base_weight: 3.0
+    audio_base: "atmospheric_background"
+    patterns:
+      - '\b(was|were|looked|appeared|seemed|felt)\b'
+      - '\b(beautiful|ugly|large|small|bright|dark)\b'
+      - '\b(castle|mountain|forest|river|building|room)\b'
+      - '\b(atmosphere|environment|setting|surroundings)\b'
+  
+  emotional:
+    base_weight: 4.0
+    audio_base: "emotional_ambient"
+    patterns:
+      - '\b(felt|experienced|overwhelmed|terrified|joyful)\b'
+      - '\b(heart|soul|mind|spirit|emotion)\b'
+      - '\b(fear|joy|sadness|anger|love|hate)\b'
+      - '\b(intense|overwhelming|powerful|deep)\b'
+  
+  transition:
+    base_weight: 2.0
+    audio_base: "transition_ambient"
+    patterns:
+      - '\b(later|meanwhile|after|before|then|next)\b'
+      - '\b(suddenly|abruptly|gradually|slowly)\b'
+      - '\b(but|however|although|while|meanwhile)\b'
+      - '\b(changed|shifted|moved|transformed)\b'
+  
+  neutral:
+    base_weight: 1.0
+    audio_base: "default_ambient"
+    patterns:
+      - '\b(the|and|or|but|in|on|at|to|for)\b'
+      - '\b(was|is|are|were|be|been|being)\b'
+
+context_patterns:
+  indoor:
+    - '\b(room|hall|chamber|office|kitchen|bedroom)\b'
+    - '\b(inside|within|indoors|interior)\b'
+    - '\b(wall|ceiling|floor|door|window)\b'
+  
+  outdoor:
+    - '\b(outside|outdoors|exterior|open air)\b'
+    - '\b(sky|cloud|sun|moon|star)\b'
+    - '\b(weather|rain|snow|wind|storm)\b'
+  
+  urban:
+    - '\b(city|town|street|building|shop|market)\b'
+    - '\b(crowd|people|traffic|noise)\b'
+    - '\b(modern|urban|metropolitan)\b'
+  
+  rural:
+    - '\b(village|farm|field|meadow|pasture)\b'
+    - '\b(countryside|rural|agricultural)\b'
+    - '\b(nature|wild|untamed)\b'
+  
+  natural:
+    - '\b(forest|mountain|river|ocean|lake)\b'
+    - '\b(wilderness|nature|natural)\b'
+    - '\b(animal|bird|tree|flower)\b'
+  
+  built:
+    - '\b(castle|fortress|temple|palace|tower)\b'
+    - '\b(architecture|construction|structure)\b'
+    - '\b(man-made|artificial|constructed)\b'
+
+mood_patterns:
+  tense:
+    - '\b(tense|anxious|worried|nervous|stressed)\b'
+    - '\b(danger|threat|risk|peril)\b'
+    - '\b(suddenly|abruptly|unexpectedly)\b'
+  
+  peaceful:
+    - '\b(peaceful|calm|serene|tranquil|quiet)\b'
+    - '\b(gentle|soft|smooth|gentle)\b'
+    - '\b(relaxed|comfortable|cozy)\b'
+  
+  exciting:
+    - '\b(exciting|thrilling|amazing|incredible)\b'
+    - '\b(adventure|journey|quest|mission)\b'
+    - '\b(discovery|revelation|breakthrough)\b'
+  
+  dark:
+    - '\b(dark|gloomy|shadowy|dim|murky)\b'
+    - '\b(fear|terror|horror|dread)\b'
+    - '\b(sinister|evil|malevolent)\b'
+  
+  warm:
+    - '\b(warm|cozy|comforting|welcoming)\b'
+    - '\b(love|affection|tenderness)\b'
+    - '\b(family|home|hearth)\b'

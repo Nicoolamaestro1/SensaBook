@@ -1,0 +1,52 @@
+# Genre Adjustments Configuration
+# This replaces hardcoded genre multipliers in scene_classifier.py
+
+genre_adjustments:
+  romance:
+    emotional: 1.5      # Romance emphasizes emotions
+    dialogue: 1.3       # More conversation
+    descriptive: 1.2    # More atmosphere
+    action: 0.7         # Less action
+    transition: 1.1     # Smooth transitions
+  
+  thriller:
+    action: 1.4         # Thrillers emphasize action
+    emotional: 1.3      # Tension and fear
+    descriptive: 0.8    # Less description, more pace
+    dialogue: 1.1       # Some dialogue
+    transition: 1.2     # Sharp transitions
+  
+  horror:
+    emotional: 1.5      # Horror emphasizes fear/terror
+    descriptive: 1.3    # Atmospheric descriptions
+    action: 1.2         # Some action
+    dialogue: 0.9       # Less dialogue
+    transition: 1.1     # Creepy transitions
+  
+  fantasy:
+    descriptive: 1.4    # Fantasy emphasizes world-building
+    action: 1.3         # Magical battles
+    emotional: 1.2      # Character development
+    dialogue: 1.1       # Some dialogue
+    transition: 1.0     # Standard transitions
+  
+  mystery:
+    dialogue: 1.4       # Mysteries emphasize conversation
+    descriptive: 1.3    # Clue descriptions
+    emotional: 1.1      # Some tension
+    action: 0.8         # Less action
+    transition: 1.2     # Logical transitions
+  
+  historical:
+    descriptive: 1.4    # Historical emphasizes setting
+    dialogue: 1.2       # Period dialogue
+    emotional: 1.1      # Some emotion
+    action: 1.0         # Standard action
+    transition: 1.1     # Time transitions
+  
+  sci-fi:
+    descriptive: 1.4    # Sci-fi emphasizes technology/setting
+    action: 1.3         # Space battles
+    dialogue: 1.1       # Some dialogue
+    emotional: 1.0      # Standard emotion
+    transition: 1.1     # Scene transitions

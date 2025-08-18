@@ -1,20 +1,12 @@
-from app.api.endpoints import books
-from app.api.endpoints import analytics
-from app.api import auth
 from fastapi import APIRouter
-from . import sample, soundscape
+from .endpoints import books, analytics
+from .simple_soundscape import router as simple_soundscape_router
 
-router = APIRouter()
+api_router = APIRouter()
 
-# Core API endpoints
-router.include_router(books.router, prefix="/api", tags=["books"])
+# Include the new simple soundscape router
+api_router.include_router(simple_soundscape_router, tags=["simple-soundscape"])
 
-# Authentication endpoints
-router.include_router(auth.router, prefix="/auth", tags=["authentication"])
-
-# Revolutionary analytics and emotion analysis endpoints
-router.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
-
-# Legacy endpoints
-router.include_router(sample.router)
-router.include_router(soundscape.router)
+# Include other endpoints
+api_router.include_router(books.router, prefix="/books", tags=["books"])
+api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
