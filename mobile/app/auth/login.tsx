@@ -31,7 +31,7 @@ export default function LoginScreen() {
     try {
       const response = await apiService.login({ email, password });
       console.log("Login successful:", response);
-      router.replace("/library");
+      router.replace("/wpm-test");
     } catch (error: any) {
       Alert.alert(
         "Error",
