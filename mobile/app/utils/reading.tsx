@@ -47,11 +47,17 @@ export async function fetchSoundscape(
 
 // --- tokenization & alignment helpers (pure) ---
 export function norm(w: string) {
-  return w.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+  return w
+    .replace(/\u00AD/g, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "");
 }
 
 export function tokenize(text: string) {
-  return text.split(/\s+/).filter(Boolean);
+  return text
+    .replace(/\u00AD/g, "")
+    .split(/\s+/)
+    .filter(Boolean);
 }
 
 export function snapToNearestToken(

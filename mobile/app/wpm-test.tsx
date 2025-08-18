@@ -8,12 +8,14 @@ import {
   ScrollView,
   Animated,
   Alert,
+  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useWpm } from "../hooks/useWpm"; // ← your existing hook
 import { tokenize } from "./utils/reading"; // ← you already export this in reading utils
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import HyphenatedText from "./components/HyphenatedText";
 const COLORS = {
   bg: "#0E0E12",
   card: "#17171c",
@@ -32,21 +34,17 @@ const MIN_VALID_MS = 5000; // 5s
 
 // ~230–260 words is great.
 const TEST_PASSAGE = `
-In a small room flooded with morning light, a reader settles into a chair and takes a slow breath before turning the page. 
-The world outside grows quieter with each line: traffic blurs, footsteps fade, and the restless hum of distraction begins to soften. 
-Words gather like small stones in a riverbed, shaping the flow of attention. 
+This is the speed we want to measure now: your natural reading tempo when you’re attentive but unhurried.
+When you’re ready, tap “Start test,” read this passage at your normal pace, and when the “Stop & Set WPM” button appears, press it. 
+We’ll calculate your words‑per‑minute from the time you spent reading. 
+If your result feels off, you can rerun the test anytime.
 Some are smooth and familiar, easy to walk across. Others have edges that catch the mind and make it stay a moment longer. 
 Reading speed is not a race; it is a rhythm, a conversation between curiosity and clarity. 
 When the text invites you forward, you find momentum. When it challenges you, you find presence. 
 Neither is better. Both are necessary. 
 The point is to arrive—not at the end of a chapter, but at a state of steady focus where the noise recedes and the meaning comes into view. 
 As your eyes move, your inner voice keeps time. 
-You begin to feel the weight of sentences, the warmth of a well‑placed metaphor, the clean air that follows a good pause. 
-With practice, your pace settles into something sustainable—something that carries you without strain. 
-This is the speed we want to measure now: your natural reading tempo when you’re attentive but unhurried.
-When you’re ready, tap “Start test,” read this passage at your normal pace, and when the “Stop & Set WPM” button appears, press it. 
-We’ll calculate your words‑per‑minute from the time you spent reading. 
-If your result feels off, you can rerun the test anytime.
+
 `;
 
 export default function WpmTestScreen() {
@@ -83,7 +81,6 @@ export default function WpmTestScreen() {
     setFinished(true);
 
     if (elapsedMs < MIN_VALID_MS) {
-      // too short → show a gentle nudge and reset
       alert(
         "That was too quick to measure accurately. Try reading for at least 5 seconds."
       );
@@ -93,27 +90,28 @@ export default function WpmTestScreen() {
       return;
     }
 
-    // WPM = words read / minutes spent.
-    // We assume the passage was read during the measured time.
     const minutes = elapsedMs / 60000;
     const rawWpm = Math.round(totalWords / minutes);
     const safeWpm = clamp(rawWpm, 50, 600);
     setWpm(safeWpm);
     await AsyncStorage.setItem(STORAGE_WPM_KEY, String(safeWpm));
+
+    if (Platform.OS === "web") {
+      // Browser alert (no buttons). Navigate after dismiss.
+      window.alert(
+        `WPM set\n\nYour reading speed is ${safeWpm} wpm.\n\nYou can adjust it anytime in the Options panel or the book page Options dropdown.`
+      );
+      router.replace("/library");
+      return;
+    }
+
+    // Native iOS/Android alert with OK button
     Alert.alert(
       "WPM set",
       `Your reading speed is ${safeWpm} wpm.\n\nYou can adjust it anytime in the Options panel or the book page Options dropdown.`,
-      [
-        {
-          text: "OK",
-          onPress: () => router.replace("/library"),
-        },
-      ],
+      [{ text: "OK", onPress: () => router.replace("/library") }],
       { cancelable: false }
     );
-
-    // Popup, then navigate
-    router.replace("/library");
   }, [startedAt, totalWords, setWpm, router, startFade]);
 
   return (
@@ -130,7 +128,9 @@ export default function WpmTestScreen() {
           contentContainerStyle={{ paddingBottom: 24 }}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.pageText}>{TEST_PASSAGE}</Text>
+          <HyphenatedText style={styles.pageText} lang="en">
+            {TEST_PASSAGE}
+          </HyphenatedText>
         </ScrollView>
 
         {/* Start button (fades out) */}
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingTop: 0,
     position: "relative",
-    backgroundColor: "rgb(245, 236, 217)",
+    backgroundColor: "#F7F3EA",
   },
 
   // Transparent card like Book page
@@ -193,21 +193,21 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontWeight: "bold",
     fontSize: 18,
-    color: "#5b4636",
+    color: "#1F190F",
     marginBottom: 8,
   },
 
   // Subtitle matches your text tone
   subtext: {
     fontSize: 14,
-    color: "#5b4636",
+    color: "#1F190F",
     marginBottom: 12,
     opacity: 0.95,
   },
 
   // Body text exactly like pageText
   pageText: {
-    color: "#5b4636",
+    color: "#1F190F",
     textAlign: "justify",
     fontSize: 16,
     lineHeight: 24,
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   primaryBtn: {
     width: "100%",
     maxWidth: 340,
-    backgroundColor: "transparent",
+    backgroundColor: "#fff",
     paddingVertical: 14,
     borderWidth: 1,
     borderColor: "#000",
@@ -241,16 +241,18 @@ const styles = StyleSheet.create({
   stopBtn: {
     width: "100%",
     maxWidth: 340,
-    backgroundColor: "#FF7A18",
+    backgroundColor: "#fff",
     paddingVertical: 14,
     borderRadius: 50,
     alignSelf: "center",
     marginTop: 0,
     marginBottom: 16,
+    borderBlockColor: "#000",
+    borderWidth: 1,
   },
   stopBtnText: {
     textAlign: "center",
-    color: "#fff",
+    color: "#000",
     fontSize: 16,
     fontWeight: "600",
     fontFamily: "Montserrat_700Bold",
@@ -259,7 +261,7 @@ const styles = StyleSheet.create({
   // Waiting line styled like your page text
   waitingText: {
     textAlign: "center",
-    color: "#5b4636",
+    color: "#1F190F",
     fontSize: 14,
     marginTop: 8,
   },

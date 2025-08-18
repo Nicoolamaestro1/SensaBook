@@ -42,8 +42,8 @@ import type { SoundscapeResponse } from "../../types/soundscape";
 import ReadingControls from "../components/ReadingControls";
 import { buildSoundscapeUrl, logSoundscapeRequest } from "../config/api";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
-import { runOnJS } from 'react-native-reanimated';
-  
+import { runOnJS } from "react-native-reanimated";
+import HyphenatedText from "../components/HyphenatedText";
 /* =====================================================
    THEME & CONSTANTS
    ===================================================== */
@@ -52,7 +52,7 @@ const COLORS = Object.freeze({
   text: "#EAEAF0",
   subtext: "#A6A8B1",
   border: "rgba(255,255,255,0.06)",
-  accent: "#FF7A18",
+  accent: "#fff",
 });
 
 const STORAGE_KEYS = Object.freeze({
@@ -90,6 +90,7 @@ export default function BookDetailScreen() {
   const hasMeasuredRef = React.useRef(false);
 
   /* ---------- UI Local State ---------- */
+  const [isAdjusting, setIsAdjusting] = React.useState(false);
   const [optionsOpen, setOptionsOpen] = React.useState(false);
   const [hasShownPanel, setHasShownPanel] = React.useState(false);
   const [optionsHeight, setOptionsHeight] = React.useState(0);
@@ -123,6 +124,7 @@ export default function BookDetailScreen() {
   const lineHeight = Math.max(Math.round(fontSize * 1.5), fontSize + 6); // simple readable rule
   const titleFontSize = Math.round(fontSize * 1.125); // 18 when body is 16
   const titleLineHeight = Math.round(titleFontSize * 1.35);
+
   // Refs for timers/indices
   const wpmRef = React.useRef(wpm);
   React.useEffect(() => {
@@ -340,6 +342,7 @@ export default function BookDetailScreen() {
      ===================================================== */
   const goToNextPage = React.useCallback(() => {
     stopReadingTimer();
+    SoundManager.stopTriggers(500);
     ensureAmbienceAfterGesture();
     if (currentChunkIndex < paginatedChunks.length - 1) {
       setCurrentChunkIndex((i) => i + 1);
@@ -366,7 +369,9 @@ export default function BookDetailScreen() {
 
   const goToPreviousPage = React.useCallback(() => {
     stopReadingTimer();
+    SoundManager.stopTriggers(500);
     ensureAmbienceAfterGesture();
+
     if (
       currentChapterIndex === 0 &&
       currentPageIndex === 0 &&
@@ -398,6 +403,30 @@ export default function BookDetailScreen() {
     router,
     book?.chapters,
   ]);
+
+  const panEnabled = !optionsOpen;
+
+  const swipe = React.useMemo(() => {
+    return Gesture.Pan()
+      .onEnd((event) => {
+        const { translationX, translationY } = event;
+
+        if (Math.abs(translationX) > Math.abs(translationY)) {
+          if (translationX > 0) {
+            runOnJS(goToPreviousPage)();
+          } else {
+            runOnJS(goToNextPage)();
+          }
+        } else {
+          if (translationY > 0) {
+            runOnJS(openOptions)();
+          } else {
+            runOnJS(closeOptions)();
+          }
+        }
+      })
+      .enabled(panEnabled); // just toggle here
+  }, [panEnabled, goToNextPage, goToPreviousPage, openOptions, closeOptions]);
 
   /* =====================================================
      SOUNDSCAPE LOADING
@@ -574,7 +603,9 @@ export default function BookDetailScreen() {
   useFocusEffect(
     React.useCallback(
       () => () => {
-        SoundManager.stopAll();
+        SoundManager.stopTriggers(250);
+        SoundManager.stopCarpet(300);
+        // SoundManager.stopAll();
         stopReadingTimer();
       },
       [stopReadingTimer]
@@ -591,7 +622,8 @@ export default function BookDetailScreen() {
   React.useEffect(() => {
     const sub = AppState.addEventListener("change", (s) => {
       if (s === "background" || s === "inactive") {
-        SoundManager.stopAll();
+        SoundManager.stopTriggers(250);
+        SoundManager.stopCarpet(300);
         stopReadingTimer();
       }
     });
@@ -658,136 +690,132 @@ export default function BookDetailScreen() {
     progress: readingProgress,
   } = computeReadingProgress(book, currentChapterIndex, currentPageIndex);
 
-  const swipe = Gesture.Pan().onEnd((event) => {
-    const { translationX, translationY } = event;
-
-    if (Math.abs(translationX) > Math.abs(translationY)) {
-      if (translationX > 0) {
-        runOnJS(goToPreviousPage)();
-      } else {
-        runOnJS(goToNextPage)();
-      }
-    } else {
-      if (translationY > 0) {
-        runOnJS(openOptions)();
-      } else {
-        runOnJS(closeOptions)();
-      }
-    }
-  });
-
   return (
     <GestureDetector gesture={swipe}>
       <SafeAreaView style={{ flex: 1 }}>
-      <View style={styles.progressContainer}>
-        <ProgressBar
-          progress={readingProgress}
-          color="#5b4636"
-          style={styles.progressBar}
-        />
-      </View>
-
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <TouchableOpacity
-          style={styles.leftTouchable}
-          onPress={goToPreviousPage}
-          activeOpacity={1}
-        />
-        <TouchableOpacity
-          style={styles.rightTouchable}
-          onPress={goToNextPage}
-          activeOpacity={1}
-        />
-
-        <View style={styles.pageCard}>
-          <Text
-            style={[
-              styles.chapterTitle,
-              { fontSize: titleFontSize, lineHeight: titleLineHeight },
-            ]}
-          >
-            {currentChapter?.title
-              ? `Chapter: ${currentChapter.title}`
-              : `Chapter ${currentChapter?.chapter_number}`}
-          </Text>
-          {renderTextWithHighlights(paginatedChunks[currentChunkIndex] || "")}
+        <View style={styles.progressContainer}>
+          <ProgressBar
+            progress={readingProgress}
+            color="#1F190F"
+            style={styles.progressBar}
+          />
         </View>
 
-        <Text style={styles.progressText}>
-          {currentPageInBook} of {totalPagesInBook} pages
-        </Text>
-
-        {(optionsOpen || hasShownPanel) && (
-          <Animated.View
-            onLayout={(e) => {
-              const h = e.nativeEvent.layout.height;
-              setOptionsHeight(h);
-              if (!hasMeasuredRef.current) {
-                const closedY = -(h + insets.top + CLOSED_EXTRA);
-                translateY.value = closedY;
-                openProg.value = 0;
-                hasMeasuredRef.current = true;
-              }
-            }}
-            style={[
-              styles.optionsPanel,
-              {
-                top: insets.top,
-                // ✅ constrain height so ScrollView can actually scroll
-                maxHeight: SCREEN_H - insets.top - PANEL_MARGIN * 2,
-                overflow: "hidden", // clip big content behind rounded corners
-              },
-              optionsAnim,
-            ]}
-          >
-            <ScrollView
-              style={{ flex: 1 }} // ✅ fill the constrained panel
-              contentContainerStyle={{
-                padding: 16,
-                paddingBottom: 16 + insets.bottom, // a little extra for safe-area
-              }}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              nestedScrollEnabled
-            >
-              <ReadingControls
-                wpm={wpm}
-                ambienceVolPct={ambienceVolPct}
-                triggerVolPct={triggerVolPct}
-                fontSize={fontSize}
-                onWpmChange={(v) => {
-                  setWpm(v);
-                  save(STORAGE_KEYS.wpm, v);
-                }}
-                onAmbienceChange={(v) => {
-                  setAmbienceVolPct(v);
-                  SoundManager.setCarpetVolume(v / 100);
-                  save(STORAGE_KEYS.ambVol, v);
-                }}
-                onTriggerChange={(v) => {
-                  setTriggerVolPct(v);
-                  SoundManager.setTriggerVolume(v / 100);
-                  save(STORAGE_KEYS.trigVol, v);
-                }}
-                onFontSizeChange={(v) => {
-                  const n = clampFont(v);
-                  setFontSize(n);
-                  save(STORAGE_KEYS.fontSize, n);
-                }}
-                onBackToLibrary={() => {
-                  setOptionsOpen(false);
-                  router.replace("/library");
-                }}
-                onClose={closeOptions}
-                colors={{
-                  text: COLORS.text,
-                  subtext: COLORS.subtext,
-                  accent: COLORS.accent,
-                }}
+        <View style={[styles.container, { paddingTop: insets.top }]}>
+          {!optionsOpen && (
+            <>
+              <TouchableOpacity
+                style={styles.leftTouchable}
+                onPress={goToPreviousPage}
+                activeOpacity={1}
               />
-            </ScrollView>
-          </Animated.View>
-        )}
+              <TouchableOpacity
+                style={styles.rightTouchable}
+                onPress={goToNextPage}
+                activeOpacity={1}
+              />
+            </>
+          )}
+
+          <View style={styles.pageCard}>
+            <Text
+              style={[
+                styles.chapterTitle,
+                { fontSize: titleFontSize, lineHeight: titleLineHeight },
+              ]}
+            >
+              {currentChapter?.title
+                ? `Chapter: ${currentChapter.title}`
+                : `Chapter ${currentChapter?.chapter_number}`}
+            </Text>
+            {/* {renderTextWithHighlights(paginatedChunks[currentChunkIndex] || "")} */}
+            <HyphenatedText
+              style={[styles.pageText, { fontSize, lineHeight }]}
+              lang="en"
+            >
+              {paginatedChunks[currentChunkIndex] || ""}
+            </HyphenatedText>
+          </View>
+
+          <Text style={styles.progressText}>
+            {currentPageInBook} of {totalPagesInBook} pages
+          </Text>
+
+          {(optionsOpen || hasShownPanel) && (
+            <Animated.View
+              onLayout={(e) => {
+                const h = e.nativeEvent.layout.height;
+                setOptionsHeight(h);
+                if (!hasMeasuredRef.current) {
+                  const closedY = -(h + insets.top + CLOSED_EXTRA);
+                  translateY.value = closedY;
+                  openProg.value = 0;
+                  hasMeasuredRef.current = true;
+                }
+              }}
+              style={[
+                styles.optionsPanel,
+                {
+                  top: insets.top,
+                  // ✅ constrain height so ScrollView can actually scroll
+                  maxHeight: SCREEN_H - insets.top - PANEL_MARGIN * 2,
+                  overflow: "hidden", // clip big content behind rounded corners
+                },
+                optionsAnim,
+              ]}
+            >
+              <ScrollView
+                style={{ flex: 1 }} // ✅ fill the constrained panel
+                contentContainerStyle={{
+                  padding: 16,
+                  paddingBottom: 16 + insets.bottom, // a little extra for safe-area
+                }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled
+              >
+                <ReadingControls
+                  wpm={wpm}
+                  ambienceVolPct={ambienceVolPct}
+                  triggerVolPct={triggerVolPct}
+                  fontSize={fontSize}
+                  onAnySliderStart={() => setIsAdjusting(true)}
+                  onAnySliderEnd={() => setIsAdjusting(false)}
+                  onWpmChange={(v) => {
+                    setWpm(v);
+                    save(STORAGE_KEYS.wpm, v);
+                  }}
+                  onAmbienceChange={(v) => {
+                    setAmbienceVolPct(v);
+                    SoundManager.setCarpetVolume(v / 100);
+                    save(STORAGE_KEYS.ambVol, v);
+                  }}
+                  onTriggerChange={(v) => {
+                    setTriggerVolPct(v);
+                    SoundManager.setTriggerVolume(v / 100);
+                    save(STORAGE_KEYS.trigVol, v);
+                  }}
+                  onFontSizeChange={(v) => {
+                    const n = clampFont(v);
+                    setFontSize(n);
+                    save(STORAGE_KEYS.fontSize, n);
+                  }}
+                  onBackToLibrary={() => {
+                    setOptionsOpen(false);
+                    SoundManager.stopTriggers(200);
+                    SoundManager.stopCarpet(300);
+                    router.replace("/library");
+                  }}
+                  onClose={closeOptions}
+                  colors={{
+                    text: COLORS.text,
+                    subtext: COLORS.subtext,
+                    accent: COLORS.accent,
+                  }}
+                />
+              </ScrollView>
+            </Animated.View>
+          )}
         </View>
       </SafeAreaView>
     </GestureDetector>
@@ -827,27 +855,27 @@ const styles = StyleSheet.create({
   },
   progressContainer: { marginBottom: 0, zIndex: 1 },
   progressBar: { height: 2, backgroundColor: "transparent" },
-  progressText: { color: "#5b4636", fontSize: 12, textAlign: "center" },
+  progressText: { color: "#1F190F", fontSize: 12, textAlign: "center" },
   pageCard: { flex: 1, backgroundColor: "transparent", marginBottom: 16 },
   chapterTitle: {
     marginTop: 16,
     fontWeight: "bold",
-    color: "#5b4636",
+    color: "#1F190F",
     marginBottom: 8,
   },
   pageText: {
     // fontSize & lineHeight are injected dynamically
-    color: "#5b4636",
+    color: "#1F190F",
     textAlign: "justify" as const,
   },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   triggerHighlight: {
-    backgroundColor: "#ff6b6b",
-    color: "#fff",
-    padding: 2,
-    borderRadius: 4,
+    // backgroundColor: "#ff6b6b",
+    // color: "#fff",
   },
-  wordBorderHighlight: { textDecorationLine: "underline", padding: 2 },
+  wordBorderHighlight: {
+    // textDecorationLine: "underline",
+  },
   topTapZone: {
     position: "absolute",
     top: 0,
