@@ -8,7 +8,7 @@ export type TriggeredSoundFromApi = {
 
 export type SoundscapeResponse = {
   book_id: number;
-  book_page_id: number;
+  book_page_id: string;
   summary: string;
   detected_scenes: string[];
   scene_keyword_counts: Record<string, number>;

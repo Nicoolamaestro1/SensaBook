@@ -1497,23 +1497,26 @@ def get_ambient_soundscape(book_id: int, chapter_number: int, page_number: int, 
         if secondary_sound != primary_sound:
             carpet_tracks.append(secondary_sound)
 
+    # Transform trigger words to match mobile app expectations
+    transformed_trigger_words = []
+    for trigger in trigger_words:
+        transformed_trigger_words.append({
+            "word": trigger.get("word", ""),
+            "position": trigger.get("position", 0),
+            "file": trigger.get("sound", ""),
+            "word_position": trigger.get("word_position", 0),
+            "sound": trigger.get("sound", "")
+        })
+
     return {
         "book_id": book_id,
-        "chapter_id": chapter_number,
-        "page_id": page_number,
+        "book_page_id": f"{book_id}_{chapter_number}_{page_number}",
         "summary": context_summary,
-        "detected_scenes": sorted_scenes,
+        "detected_scenes": [scene.get("type", "unknown") for scene in sorted_scenes[:3]],  # Convert to list of strings
         "scene_keyword_counts": scene_counts,
         "scene_keyword_positions": scene_positions,
         "carpet_tracks": carpet_tracks,
-        "triggered_sounds": trigger_words,
-        "trigger_positions": _extract_trigger_positions(trigger_words, book_page.content),
-        "mood": primary_mood,
-        "intensity": confidence,
-        "atmosphere": primary_mood,
-        "confidence": confidence,
-        "reasoning": f"Primary mood: {primary_mood} (confidence: {confidence:.2f})",
-        "mood_analysis": mood_analysis
+        "triggered_sounds": transformed_trigger_words
     }
 
 def _extract_trigger_positions(trigger_words: List[Dict], text: str) -> Dict[str, List[Dict]]:
