@@ -46,6 +46,7 @@ import {
 import type { Book, Chapter, Page } from "../../types/book";
 import type { SoundscapeResponse } from "../../types/soundscape";
 import ReadingControls from "../components/ReadingControls";
+import { WordTracker } from "../components/WordTracker";
 
 const COLORS = Object.freeze({
   card: "#17171c",
@@ -163,6 +164,14 @@ export default function BookDetailScreen() {
   const titleFontSize = Math.round(fontSize * 1.125);
   const titleLineHeight = Math.round(titleFontSize * 1.35);
 
+  // word-tracker state
+  const [chunkWordCount, setChunkWordCount] = React.useState(0);
+  const [triggerPositions, setTriggerPositions] = React.useState<Set<number>>(
+    new Set()
+  );
+  const [trackerMarks, setTrackerMarks] = React.useState<number[]>([]);
+  const [seekingIndex, setSeekingIndex] = React.useState<number | null>(null);
+
   // refs
   const wpmRef = React.useRef(wpm);
   React.useEffect(() => {
@@ -266,6 +275,33 @@ export default function BookDetailScreen() {
     [paginatedChunks, currentChunkIndex]
   );
 
+  // Recompute word count for current chunk  // NEW
+  // Recompute word count for the current chunk  (NEW)
+  React.useEffect(() => {
+    const text = getCurrentChunkText();
+    const words = text.split(/\s+/).filter(Boolean);
+    setChunkWordCount(words.length);
+  }, [getCurrentChunkText, currentChunkIndex, paginatedChunks]);
+
+  // Fast lookup set of trigger positions within the chunk  (NEW)
+  React.useEffect(() => {
+    setTriggerPositions(new Set(triggerWords.map((t) => t.position)));
+  }, [triggerWords]);
+
+  // Normalized tick marks for the tracker [0..1]  (NEW)
+  React.useEffect(() => {
+    const denom = Math.max(1, chunkWordCount - 1);
+    setTrackerMarks(
+      Array.from(triggerPositions).map((p) =>
+        Math.min(1, Math.max(0, p / denom))
+      )
+    );
+  }, [triggerPositions, chunkWordCount]);
+
+  // Reset seeking overlay when page/chunk changes  (NEW)
+  React.useEffect(() => {
+    setSeekingIndex(null);
+  }, [currentChunkIndex]);
   const startReadingTimer = React.useCallback(
     (resumeFromIndex?: number, triggersArg?: TriggerWord[]) => {
       stopReadingTimer();
@@ -415,6 +451,26 @@ export default function BookDetailScreen() {
     router,
     book?.chapters,
   ]);
+
+  // --- tracker seek handlers (NEW) ---
+  const onSeekStart = React.useCallback(() => {
+    stopReadingTimer();
+    setSeekingIndex(activeWordIndex ?? 0);
+    setActiveTriggerWords(new Set());
+  }, [stopReadingTimer, activeWordIndex]);
+
+  const onSeekPreview = React.useCallback((idx: number) => {
+    setSeekingIndex(idx);
+  }, []);
+
+  const onSeekEnd = React.useCallback(
+    (idx: number) => {
+      setSeekingIndex(null);
+      // jump and resume from selected word
+      startReadingTimer(Math.max(0, Math.min(idx, (chunkWordCount || 1) - 1)));
+    },
+    [startReadingTimer, chunkWordCount]
+  );
 
   const swipe = React.useMemo(() => {
     return Gesture.Pan()
@@ -691,178 +747,190 @@ export default function BookDetailScreen() {
   } = computeReadingProgress(book, currentChapterIndex, currentPageIndex);
 
   return (
-    <GestureDetector gesture={swipe}>
-      <SafeAreaView style={{ flex: 1 }}>
-        <View style={styles.progressContainer}>
-          <ProgressBar
-            progress={readingProgress}
-            color="#1F190F"
-            style={styles.progressBar}
-          />
-        </View>
+    <SafeAreaView style={{ flex: 1 }}>
+      <View style={styles.progressContainer}>
+        <ProgressBar
+          progress={readingProgress}
+          color="#1F190F"
+          style={styles.progressBar}
+        />
+      </View>
 
-        <View style={[styles.container, { paddingTop: insets.top }]}>
-          {!optionsOpen && (
-            <>
-              <TouchableOpacity
-                style={styles.leftTouchable}
-                onPress={goToPreviousPage}
-                activeOpacity={1}
-              />
-              <TouchableOpacity
-                style={styles.rightTouchable}
-                onPress={goToNextPage}
-                activeOpacity={1}
-              />
-            </>
-          )}
-
-          <View
-            style={styles.pageCard}
-            onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
-          >
-            <View>
-              <Text
-                style={[
-                  styles.chapterTitle,
-                  { fontSize: titleFontSize, lineHeight: titleLineHeight },
-                ]}
-              >
-                {currentChapter?.title
-                  ? `Chapter: ${currentChapter.title}`
-                  : `Chapter ${currentChapter?.chapter_number}`}
-              </Text>
-            </View>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        {/* Swipe ONLY over the reading area */}
+        <GestureDetector gesture={swipe}>
+          <View style={{ flex: 1 }}>
+            {!optionsOpen && (
+              <>
+                <TouchableOpacity
+                  style={styles.leftTouchable}
+                  onPress={goToPreviousPage}
+                  activeOpacity={1}
+                />
+                <TouchableOpacity
+                  style={styles.rightTouchable}
+                  onPress={goToNextPage}
+                  activeOpacity={1}
+                />
+              </>
+            )}
 
             <View
-              style={styles.bodyWrapper}
-              onLayout={(e) => {
-                const { width: w, height: h } = e.nativeEvent.layout;
-                setContainerWidth(w);
-                setContainerHeight(h);
-              }}
+              style={styles.pageCard}
+              onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
             >
-              {/* ---------- INVISIBLE MEASURER (paragraph-aware) ---------- */}
-              {Platform.OS !== "web" && containerWidth > 0 && (
-                <View
-                  collapsable={false}
-                  pointerEvents="none"
-                  style={{
-                    position: "absolute",
-                    left: 0,
-                    top: 0,
-                    width: containerWidth,
-                    opacity: 0,
-                  }}
+              <View>
+                <Text
+                  style={[
+                    styles.chapterTitle,
+                    { fontSize: titleFontSize, lineHeight: titleLineHeight },
+                  ]}
                 >
-                  {/** We render each paragraph in its own <Text>, collect its lines,
-                   *  and insert ONE explicit spacer line of height `lineHeight`.
-                   */}
-                  <ParagraphMeasurer
-                    paragraphs={paragraphs}
-                    fontSize={fontSize}
-                    lineHeight={lineHeight}
-                    width={containerWidth}
-                    onMeasured={setMeasuredBoxes}
-                  />
-                </View>
-              )}
+                  {currentChapter?.title
+                    ? `Chapter: ${currentChapter.title}`
+                    : `Chapter ${currentChapter?.chapter_number}`}
+                </Text>
+              </View>
 
-              {/* Visible: always render the current chunk string */}
-              <Text
-                style={[styles.pageText, { fontSize, lineHeight }]}
-                allowFontScaling={false}
-                {...Platform.select({
-                  android: { textBreakStrategy: "highQuality" as const },
-                  default: {},
-                })}
+              <View
+                style={styles.bodyWrapper}
+                onLayout={(e) => {
+                  const { width: w, height: h } = e.nativeEvent.layout;
+                  setContainerWidth(w);
+                  setContainerHeight(h);
+                }}
               >
-                {paginatedChunks[currentChunkIndex] || ""}
-              </Text>
+                {/* Invisible measurer */}
+                {Platform.OS !== "web" && containerWidth > 0 && (
+                  <View
+                    collapsable={false}
+                    pointerEvents="none"
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      top: 0,
+                      width: containerWidth,
+                      opacity: 0,
+                    }}
+                  >
+                    <ParagraphMeasurer
+                      paragraphs={paragraphs}
+                      fontSize={fontSize}
+                      lineHeight={lineHeight}
+                      width={containerWidth}
+                      onMeasured={setMeasuredBoxes}
+                    />
+                  </View>
+                )}
+
+                {/* Visible chunk */}
+                <Text
+                  style={[styles.pageText, { fontSize, lineHeight }]}
+                  allowFontScaling={false}
+                  {...Platform.select({
+                    android: { textBreakStrategy: "highQuality" as const },
+                    default: {},
+                  })}
+                >
+                  {paginatedChunks[currentChunkIndex] || ""}
+                </Text>
+              </View>
             </View>
           </View>
+        </GestureDetector>
 
+        {/* ----- NO-SWIPE ZONE (tracker + page count) ----- */}
+        <View style={{ paddingTop: 4 }}>
+          <WordTracker
+            width={containerWidth}
+            activeIndex={activeWordIndex ?? 0}
+            totalWords={chunkWordCount}
+            marks={trackerMarks}
+            triggerSet={triggerPositions}
+            onSeekStart={onSeekStart}
+            onSeekEnd={onSeekEnd}
+          />
           <Text style={styles.progressText}>
             {currentPageInBook} of {totalPagesInBook} pages
           </Text>
-
-          {(optionsOpen || hasShownPanel) && (
-            <Animated.View
-              onLayout={(e) => {
-                const h = e.nativeEvent.layout.height;
-                setOptionsHeight(h);
-                if (!hasMeasuredRef.current) {
-                  const closedY = -(h + insets.top + CLOSED_EXTRA);
-                  translateY.value = closedY;
-                  openProg.value = 0;
-                  hasMeasuredRef.current = true;
-                }
-              }}
-              style={[
-                styles.optionsPanel,
-                {
-                  top: insets.top,
-                  maxHeight: SCREEN_H - insets.top - 24,
-                  overflow: "hidden",
-                },
-                optionsAnim,
-              ]}
-            >
-              <ScrollView
-                style={{ flex: 1 }}
-                contentContainerStyle={{
-                  padding: 16,
-                  paddingBottom: 16 + insets.bottom,
-                }}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-                nestedScrollEnabled
-              >
-                <ReadingControls
-                  wpm={wpm}
-                  ambienceVolPct={ambienceVolPct}
-                  triggerVolPct={triggerVolPct}
-                  fontSize={fontSize}
-                  onAnySliderStart={() => {}}
-                  onAnySliderEnd={() => {}}
-                  onWpmChange={(v) => {
-                    setWpm(v);
-                    save(STORAGE_KEYS.wpm, v);
-                  }}
-                  onAmbienceChange={(v) => {
-                    setAmbienceVolPct(v);
-                    SoundManager.setCarpetVolume(v / 100);
-                    save(STORAGE_KEYS.ambVol, v);
-                  }}
-                  onTriggerChange={(v) => {
-                    setTriggerVolPct(v);
-                    SoundManager.setTriggerVolume(v / 100);
-                    save(STORAGE_KEYS.trigVol, v);
-                  }}
-                  onFontSizeChange={(v) => {
-                    const n = clampFont(v);
-                    setFontSize(n);
-                    save(STORAGE_KEYS.fontSize, n);
-                  }}
-                  onBackToLibrary={() => {
-                    setOptionsOpen(false);
-                    SoundManager.stopTriggers(200);
-                    SoundManager.stopCarpet(300);
-                    router.replace("/library");
-                  }}
-                  onClose={closeOptions}
-                  colors={{
-                    text: COLORS.text,
-                    subtext: COLORS.subtext,
-                    accent: COLORS.accent,
-                  }}
-                />
-              </ScrollView>
-            </Animated.View>
-          )}
         </View>
-      </SafeAreaView>
-    </GestureDetector>
+
+        {(optionsOpen || hasShownPanel) && (
+          <Animated.View
+            onLayout={(e) => {
+              const h = e.nativeEvent.layout.height;
+              setOptionsHeight(h);
+              if (!hasMeasuredRef.current) {
+                const closedY = -(h + insets.top + CLOSED_EXTRA);
+                translateY.value = closedY;
+                openProg.value = 0;
+                hasMeasuredRef.current = true;
+              }
+            }}
+            style={[
+              styles.optionsPanel,
+              {
+                top: insets.top,
+                maxHeight: SCREEN_H - insets.top - 24,
+                overflow: "hidden",
+              },
+              optionsAnim,
+            ]}
+          >
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{
+                padding: 16,
+                paddingBottom: 16 + insets.bottom,
+              }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled
+            >
+              <ReadingControls
+                wpm={wpm}
+                ambienceVolPct={ambienceVolPct}
+                triggerVolPct={triggerVolPct}
+                fontSize={fontSize}
+                onAnySliderStart={() => {}}
+                onAnySliderEnd={() => {}}
+                onWpmChange={(v) => {
+                  setWpm(v);
+                  save(STORAGE_KEYS.wpm, v);
+                }}
+                onAmbienceChange={(v) => {
+                  setAmbienceVolPct(v);
+                  SoundManager.setCarpetVolume(v / 100);
+                  save(STORAGE_KEYS.ambVol, v);
+                }}
+                onTriggerChange={(v) => {
+                  setTriggerVolPct(v);
+                  SoundManager.setTriggerVolume(v / 100);
+                  save(STORAGE_KEYS.trigVol, v);
+                }}
+                onFontSizeChange={(v) => {
+                  const n = clampFont(v);
+                  setFontSize(n);
+                  save(STORAGE_KEYS.fontSize, n);
+                }}
+                onBackToLibrary={() => {
+                  setOptionsOpen(false);
+                  SoundManager.stopTriggers(200);
+                  SoundManager.stopCarpet(300);
+                  router.replace("/library");
+                }}
+                onClose={closeOptions}
+                colors={{
+                  text: COLORS.text,
+                  subtext: COLORS.subtext,
+                  accent: COLORS.accent,
+                }}
+              />
+            </ScrollView>
+          </Animated.View>
+        )}
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -955,17 +1023,19 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: "20%",
     left: 0,
-    bottom: 0,
+    bottom: "10%",
     width: "40%",
     zIndex: 10,
+    borderWidth: 1,
   },
   rightTouchable: {
     position: "absolute",
     top: "20%",
     right: 0,
-    bottom: 0,
+    bottom: "10%",
     width: "40%",
     zIndex: 10,
+    borderWidth: 1,
   },
   progressContainer: { marginBottom: 0, zIndex: 1 },
   progressBar: { height: 2, backgroundColor: "transparent" },
