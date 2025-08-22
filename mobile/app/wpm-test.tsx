@@ -61,6 +61,7 @@ export default function WpmTestScreen() {
   const totalWords = React.useMemo(() => tokenize(TEST_PASSAGE).length, []);
 
   const handleStart = React.useCallback(() => {
+    router.replace("/library"); // REMOVE AFTER SETTING TEXT FORMAT!!!!!!!!!!!!!!!!!!!
     // fade out the start button
     Animated.timing(startFade, {
       toValue: 0,
