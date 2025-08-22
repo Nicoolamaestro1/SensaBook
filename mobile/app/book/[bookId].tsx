@@ -1035,7 +1035,6 @@ const styles = StyleSheet.create({
     bottom: "10%",
     width: "40%",
     zIndex: 10,
-    borderWidth: 1,
   },
   progressContainer: { marginBottom: 0, zIndex: 1 },
   progressBar: { height: 2, backgroundColor: "transparent" },
