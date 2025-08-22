@@ -1026,7 +1026,6 @@ const styles = StyleSheet.create({
     bottom: "10%",
     width: "40%",
     zIndex: 10,
-    borderWidth: 1,
   },
   rightTouchable: {
     position: "absolute",
