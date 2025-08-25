@@ -2,7 +2,10 @@ import { WORD_TRIGGERS, isAmbienceKey } from "../../constants/sounds";
 import type { TriggerWord } from "../../constants/sounds";
 import type { SoundscapeResponse } from "../../types/soundscape";
 import { buildSoundscapeUrl } from "../config/api";
-
+function isGapLine(s: string) {
+  // We treat an empty line (iOS) or a NBSP-only line (Android) as the "paragraph gap".
+  return s.length === 0 || s === "\u00A0";
+}
 export function calculateWordTiming(text: string, wpm: number) {
   if (!text) return { words: [], msPerWord: 333 };
   const words = text.trim().split(/\s+/);
@@ -96,6 +99,45 @@ export function paginateText(
     pages.push(words.slice(i, i + wordsPerPage).join(" "));
   }
   return pages;
+}
+
+// Replace your paginateByLines with this version
+export function paginateByLines(
+  allLines: string[],
+  maxLinesPerPage: number
+): string[] {
+  if (!maxLinesPerPage || maxLinesPerPage <= 0) return [allLines.join("\n")];
+
+  const pages: string[] = [];
+  let i = 0;
+
+  while (i < allLines.length) {
+    let start = i;
+    let end = Math.min(start + maxLinesPerPage, allLines.length);
+
+    // If there is more content after this slice, check what the next page would start with.
+    if (end < allLines.length) {
+      // Count how many consecutive gap lines sit right at the boundary.
+      let k = 0;
+      while (end + k < allLines.length && isGapLine(allLines[end + k])) k++;
+
+      if (k > 0) {
+        // Try to keep the *entire* gap block with the previous page if it fits.
+        const used = end - start;
+        const free = maxLinesPerPage - used;
+        if (k <= free) {
+          end += k; // pull gap block into this page so next page starts with real content
+        }
+        // If it doesn't fit, we leave it—rare unless maxLinesPerPage is very small.
+      }
+    }
+
+    if (end === start) end = Math.min(start + maxLinesPerPage, allLines.length); // safety
+
+    pages.push(allLines.slice(start, end).join("\n"));
+    i = end;
+  }
+  return pages.length ? pages : [allLines.join("\n")];
 }
 
 export function computeReadingProgress(
